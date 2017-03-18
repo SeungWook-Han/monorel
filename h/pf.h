@@ -60,6 +60,8 @@ int  PF_UnpinPage	(int fd, int pagenum, int dirty);
 #define PFE_GETTHIS		(-14)
 #define PFE_GITNEXT		(-15)
 #define PFE_GETFIRST		(-16)
+#define PFE_GETDIRTY		(-17)
+#define PFE_UNPINPAGE		(-18)
 
 /*
  * error in UNIX system call or library routine

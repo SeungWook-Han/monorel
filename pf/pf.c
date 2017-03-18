@@ -296,5 +296,56 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf)
 	return PFE_OK;
 }
 
-int  PF_DirtyPage	(int fd, int pagenum);
-int  PF_UnpinPage	(int fd, int pagenum, int dirty);
+int PF_DirtyPage(int fd, int pagenum)
+{
+	struct PFftable_ele *elem;
+	BFreq bq;
+	PFpage *fpage;
+	
+
+	elem = &pf_table[fd];
+	
+	if (elem->valid == FALSE || elem->inode != fd)
+		return PFE_GETDIRTY;
+
+	if (elem->hdr.numpages < pagenum)
+		return PFE_GETDIRTY;
+
+	bq.fd = fd;
+	bq.unixfd = elem->unixfd;
+	bq.pagenum = pagenum;
+	
+	if (BF_TouchBuf(bq) != BFE_OK)
+		return PFE_GETDIRTY;
+
+	return PFE_OK;
+}
+
+int PF_UnpinPage(int fd, int pagenum, int dirty)
+{
+	struct PFftable_ele *elem;
+	BFreq bq;
+	PFpage *fpage;
+
+	elem = &pf_table[fd];
+	
+	if (elem->valid == FALSE || elem->inode != fd)
+		return PFE_UNPINPAGE;
+
+	if (elem->hdr.numpages < pagenum)
+		return PFE_UNPINPAGE;
+
+	if (dirty == TRUE) {
+		if (PF_DirtyPage(fd, pagenum) != PFE_OK)
+			return PFE_UNPINPAGE;
+	}
+
+	bq.fd = fd;
+	bq.unixfd = elem->unixfd;
+	bq.pagenum = page;
+	if (BF_UnpinBuf(bq) != BFE_OK) {
+		return PFE_UNPINPAGE;
+	}
+
+	return PFE_OK;
+}	
