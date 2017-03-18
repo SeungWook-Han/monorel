@@ -11,6 +11,8 @@
 typedef enum { FALSE = 0, TRUE } bool_t;
 typedef float  real;
 
+#define STR_SIZE	64
+
 /*
  * supported data types
  */

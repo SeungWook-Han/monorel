@@ -10,6 +10,21 @@
  */
 #define PF_FTAB_SIZE	20
 
+typedef struct PFhdr_str {
+	unsigned int numpages;
+	unsigned int offset;
+}PFhdr_str;
+
+typedef struct PFftab_ele {
+	bool_t	 	valid;		// TRUE: opened FALSE: closed
+	unsigned int	inode;
+	char		*fname;
+	unsigned int	unixfd;
+	PFhdr_str	hdr;
+	bool_t		hdrchanged;	//dirty
+} PFftable_ele;
+
+
 /*
  * prototypes for PF-layer functions
  */
@@ -37,6 +52,14 @@ int  PF_UnpinPage	(int fd, int pagenum, int dirty);
 #define PFE_FILEOPEN		(-6)
 #define PFE_FILENOTOPEN		(-7)
 #define PFE_NOUSERS		(-8)
+#define PFE_FILENOTEXIST	(-9)
+#define PFE_FILEEXIST		(-10)
+#define PFE_FILEIO		(-11)
+#define PFE_CLOSE		(-12)
+#define PFE_ALLOC		(-13)
+#define PFE_GETTHIS		(-14)
+#define PFE_GITNEXT		(-15)
+#define PFE_GETFIRST		(-16)
 
 /*
  * error in UNIX system call or library routine
