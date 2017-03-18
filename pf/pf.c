@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "minirel.h"
 #include "pf.h"
 #include "bf.h"
 
-#define INVALID_INDEX -1;
-#define META_PAGE_OFFSET 0;
-#define DATA_PAGE_OFFSET 1;
+#define INVALID_INDEX -1
+#define META_PAGE_OFFSET 0
+#define DATA_PAGE_OFFSET 1
 
 struct PFftab_ele *pf_table; 
 unsigned int nr_pf_elem;
@@ -31,10 +32,13 @@ bool_t PF_SearchFile(char *filename)
 {
 	int fd;
 
-	if (fd = open(filename, O_RDONLY)) {
+	if ((fd = open(filename, O_RDONLY)) > 0) {
 		close(fd);
+		printf("File already exist!\n");
 		return TRUE;
 	}
+
+	printf("File not exist!\n");
 	return FALSE;
 }
 
@@ -42,11 +46,13 @@ void PF_Init(void)
 {
 	int i = 0;
 	
-	pf_table = malloc(PF_FTAB_SIZE, sizeof(struct PFftab_ele));
+	pf_table = calloc(PF_FTAB_SIZE, sizeof(struct PFftab_ele));
 	for (i = 0; i < PF_FTAB_SIZE; i++) {
 		pf_table[i].fname = malloc(STR_SIZE * sizeof(char));
 	}
 	nr_pf_elem = 0;
+
+	BF_Init();	
 
 	return ;
 }
@@ -56,10 +62,10 @@ int PF_CreateFile(char *filename)
 {
 	int fd;
 	int i = 0;
-	struct PFftabl_ele *elem;
+	struct PFftab_ele *elem;
 	struct PFpage page;
 
-	if (PF_SearchFile(filename) || (fd = creat(filename, 644)) < 0) {
+	if (PF_SearchFile(filename) || (fd = creat(filename, 0644)) < 0) {
 		return PFE_FILEOPEN;
 	}
 
@@ -77,10 +83,10 @@ int PF_CreateFile(char *filename)
 	elem->hdr.numpages = 0;
 	elem->hdr.offset = DATA_PAGE_OFFSET;
 
-	if (!sprintf(&page, "%u", elem->hdr.numpages)) {
+	if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
 		return PFE_FILEIO;
 	}
-	if (pwrite(fd, page->pagebuf, PAGE_SIZE, META_PAGE_OFFSET) != PAGE_SIZE) {
+	if (pwrite(fd, page.pagebuf, PAGE_SIZE, META_PAGE_OFFSET) != PAGE_SIZE) {
 		return PFE_FILEIO;
 	}
 
@@ -142,12 +148,12 @@ int  PF_OpenFile(char *filename)
 	elem->hdrchanged = FALSE;
 	elem->hdr.offset = DATA_PAGE_OFFSET;
 
-	return PFE_OK;
+	return elem->inode;
 }
 
 int  PF_CloseFile(int fd)
 {
-	struct PFftable_ele *elem = &pf_table[fd];
+	struct PFftab_ele *elem = &pf_table[fd];
 	BFreq bq;
 	int i = 0;
 	int numpages;
@@ -161,7 +167,7 @@ int  PF_CloseFile(int fd)
 
 	for (i = DATA_PAGE_OFFSET; i < DATA_PAGE_OFFSET + numpages; i++) {
 		bq.pagenum = i;
-		if (BF_UnpinBuf(&bq) != BFE_OK) {
+		if (BF_UnpinBuf(bq) != BFE_OK) {
 			return PFE_CLOSE;
 		}
 	}
@@ -173,11 +179,11 @@ int  PF_CloseFile(int fd)
 	if (elem->hdrchanged == TRUE) {
 		struct PFpage page;
 
-		if (!sprintf(&page, "%u", elem->hdr.numpages)) {
+		if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
 			return PFE_FILEIO;
 		}
 
-		if (pwrite(fd, page->pagebuf, PAGE_SIZE, 0) != PAGE_SIZE) {
+		if (pwrite(elem->unixfd, page.pagebuf, PAGE_SIZE, 0) != PAGE_SIZE) {
 			return PFE_FILEIO;
 		}
 	}
@@ -193,24 +199,24 @@ int  PF_CloseFile(int fd)
 
 int  PF_AllocPage(int fd, int *pagenum, char **pagebuf)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 
 	elem = &pf_table[fd];
 	bq.fd = elem->inode;
 	bq.unixfd = elem->unixfd;
-	bq.pagenum = elem->hdr.numpages;
+	bq.pagenum = elem->hdr.numpages + DATA_PAGE_OFFSET;
 
-	if (BF_AllocBuf(bf, &fpage) != BFE_OK) {
+	if (BF_AllocBuf(bq, &fpage) != BFE_OK) {
 		return PFE_ALLOC;
 	}
 
-	if (BF_TouchBuf(bf) != BFE_OK) {
+	if (BF_TouchBuf(bq) != BFE_OK) {
 		return PFE_ALLOC;
 	}
 
-	*pagenum = elem->hdr.numpages;
+	*pagenum = bq.pagenum;
 	*pagebuf = fpage->pagebuf;
 
 	elem->hdr.numpages++;
@@ -221,7 +227,7 @@ int  PF_AllocPage(int fd, int *pagenum, char **pagebuf)
 
 int PF_GetThisPage(int fd, int pagenum, char **pagebuf)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 
@@ -242,12 +248,13 @@ int PF_GetThisPage(int fd, int pagenum, char **pagebuf)
 		return PFE_GETTHIS;
 	}
 
+	*pagebuf = fpage->pagebuf;
 	return PFE_OK;
 }
 
 int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 
@@ -263,14 +270,15 @@ int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf)
 	
 	if (PF_GetThisPage(fd, DATA_PAGE_OFFSET, pagebuf) != PFE_OK) 
 		return PFE_GETNEXT;
-	
+
+	*pagenum = DATA_PAGE_OFFSET;
 	elem->hdr.offset++;
 	return PFE_OK;
 }
 
 int PF_GetNextPage(int fd, int *pagenum, char **pagebuf)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 
@@ -298,32 +306,38 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf)
 
 int PF_DirtyPage(int fd, int pagenum)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 	
 
 	elem = &pf_table[fd];
 	
-	if (elem->valid == FALSE || elem->inode != fd)
+	if (elem->valid == FALSE || elem->inode != fd) {
+		printf("test1\n");
 		return PFE_GETDIRTY;
+	}
 
-	if (elem->hdr.numpages < pagenum)
+	if (elem->hdr.numpages < pagenum) {
+		printf("test2\n");
 		return PFE_GETDIRTY;
+	}
 
 	bq.fd = fd;
 	bq.unixfd = elem->unixfd;
 	bq.pagenum = pagenum;
 	
-	if (BF_TouchBuf(bq) != BFE_OK)
+	if (BF_TouchBuf(bq) != BFE_OK) {
+		printf("test\n");
 		return PFE_GETDIRTY;
+	}
 
 	return PFE_OK;
 }
 
 int PF_UnpinPage(int fd, int pagenum, int dirty)
 {
-	struct PFftable_ele *elem;
+	struct PFftab_ele *elem;
 	BFreq bq;
 	PFpage *fpage;
 
@@ -342,10 +356,16 @@ int PF_UnpinPage(int fd, int pagenum, int dirty)
 
 	bq.fd = fd;
 	bq.unixfd = elem->unixfd;
-	bq.pagenum = page;
+	bq.pagenum = pagenum;
 	if (BF_UnpinBuf(bq) != BFE_OK) {
 		return PFE_UNPINPAGE;
 	}
 
 	return PFE_OK;
-}	
+}
+
+void PF_PrintError(const char *mesg)
+{
+	printf("%s\n", mesg);
+	return ;
+}

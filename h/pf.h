@@ -16,12 +16,12 @@ typedef struct PFhdr_str {
 }PFhdr_str;
 
 typedef struct PFftab_ele {
-	bool_t	 	valid;		// TRUE: opened FALSE: closed
+	bool_t	 	valid;		/* TRUE: opened FALSE: closed */
 	unsigned int	inode;
 	char		*fname;
 	unsigned int	unixfd;
 	PFhdr_str	hdr;
-	bool_t		hdrchanged;	//dirty
+	bool_t		hdrchanged;	/* dirty */
 } PFftable_ele;
 
 
@@ -39,6 +39,7 @@ int  PF_GetNextPage	(int fd, int *pagenum, char **pagebuf);
 int  PF_GetThisPage	(int fd, int pagenum, char **pagebuf);
 int  PF_DirtyPage	(int fd, int pagenum);
 int  PF_UnpinPage	(int fd, int pagenum, int dirty);
+void PF_PrintError	(const char *mesg);
 
 /*
  * PF-layer error codes
@@ -58,7 +59,7 @@ int  PF_UnpinPage	(int fd, int pagenum, int dirty);
 #define PFE_CLOSE		(-12)
 #define PFE_ALLOC		(-13)
 #define PFE_GETTHIS		(-14)
-#define PFE_GITNEXT		(-15)
+#define PFE_GETNEXT		(-15)
 #define PFE_GETFIRST		(-16)
 #define PFE_GETDIRTY		(-17)
 #define PFE_UNPINPAGE		(-18)

@@ -1,4 +1,4 @@
-MINIREL_HOME=/home/seunguk/minirel
+MINIREL_HOME=/home/seunguk/monorel
 
 # Makefile for BF layer
 LIB	= bf

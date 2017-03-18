@@ -1,11 +1,15 @@
+MINIREL_HOME=/home/seunguk/monorel
+
 # Makefile for PF layer
 CIN	= ci -l
 RDIFF	= rcsdiff
 
 LIB	= pf
 INCDIR	= ${MINIREL_HOME}/h
-INCS	= pferrors.h pftypes.h
-SRCS	= pf.c pferrors.c pfstats.c
+#INCS	= pferrors.h pftypes.h
+#SRCS	= pf.c pferrors.c pfstats.c
+INCS	= 
+SRCS	= pf.c
 TESTS	= pftest.c pftest-ifvega.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a ../bf/libbf.a

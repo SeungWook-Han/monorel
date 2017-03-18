@@ -365,12 +365,15 @@ int BF_AllocBuf(BFreq bq, PFpage **fpage)
 
 int BF_UnpinBuf(BFreq bq)
 {
-	struct BFpage *page = (hashing(bq.fd, bq.pagenum, NULL))->bpage;
+	struct BFhash_entry *hash_elem;
+	struct BFpage *page;
 
-	if (page == NULL) return BFE_PAGENOTINBUF;
+	hash_elem = hashing(bq.fd, bq.pagenum, NULL);
 
-	if (page->count != 0) page->count--;
-
+	if (hash_elem != NULL) {
+		page = hash_elem->bpage;
+		if (page->count != 0) page->count--;
+	}
 	return BFE_OK;
 }
 

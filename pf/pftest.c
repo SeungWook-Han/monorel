@@ -32,7 +32,7 @@ void writefile(char *fname)
 
     for (i=0; i < 2 * BF_MAX_BUFS; i++){
 	if ((error = PF_AllocPage(fd,&pagenum,&buf))!= PFE_OK){
-printf("PF_AllocPage fails (i=%d)\n",i);
+	    printf("PF_AllocPage fails (i=%d)\n",i);
 	    PF_PrintError("first buffer\n");
 	    exit(1);
 	}
@@ -53,10 +53,11 @@ printf("PF_AllocPage fails (i=%d)\n",i);
 	}
 
     }
-
+    
     /* close the file */
     if ((error = PF_CloseFile(fd))!= PFE_OK){
 	PF_PrintError("close file1");
+	printf("errorno : %d\n", error);
 	exit(1);
     }
 
@@ -78,6 +79,7 @@ void printfile(int fd)
 */
 
     if ((error = PF_GetFirstPage(fd,&pagenum,&buf))== PFE_OK) {
+	printf("test\n");
 	memcpy((char *)&i, buf, sizeof(int));
 	printf("got page %d, value_read %d\n",pagenum,i);
 	fflush(stdout);
