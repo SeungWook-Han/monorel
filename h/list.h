@@ -18,16 +18,14 @@ struct list_head {
 #define LIST_HEAD(name) \
 	struct list_head name = LIST_HEAD_INIT(name)
 
-static inline void
-INIT_LIST_HEAD(struct list_head *list)
+static void INIT_LIST_HEAD(struct list_head *list)
 {
 	list->next = list->prev = list;
 }
 
-static inline void 
-__list_add(struct list_head *entry,
-	   struct list_head *prev,
-	   struct list_head *next)
+static void __list_add(struct list_head *entry,
+	   		      struct list_head *prev,
+	 		      struct list_head *next)
 {
 	next->prev = entry;
 	entry->next = next;
@@ -47,8 +45,7 @@ __list_add(struct list_head *entry,
  * struct foo *newfoo = malloc(...);
  * list_add(&newfoo->entry, &bar->list_of_foos);
  */
-static inline void 
-list_add(struct list_head *entry, struct list_head *head)
+static void list_add(struct list_head *entry, struct list_head *head)
 {
 	__list_add(entry, head, head->next);
 }
@@ -69,14 +66,14 @@ list_add(struct list_head *entry, struct list_head *head)
  * @param entry The new element to perpend to the list.
  * @param head The existing list.
  */
-static inline void
-list_add_tail(struct list_head *entry, struct list_head *head)
+static void list_add_tail(struct list_head *entry, 
+				 struct list_head *head)
 {
 	__list_add(entry, head->prev, head);
 }
 
-static inline void
-__list_del(struct list_head *prev, struct list_head *next)
+static void __list_del(struct list_head *prev, 
+			      struct list_head *next)
 {
 	next->prev = prev;
 	prev->next = next;
@@ -96,22 +93,19 @@ __list_del(struct list_head *prev, struct list_head *next)
  *
  * @param entry The element to remove.
  */
-static inline void
-list_del(struct list_head *entry)
+static void list_del(struct list_head *entry)
 {
 	__list_del(entry->prev, entry->next);
 }
 
-static inline void
-list_del_init(struct list_head *entry)
+static void list_del_init(struct list_head *entry)
 {
 	__list_del(entry->prev, entry->next);
 	INIT_LIST_HEAD(entry);
 }
 
-static inline void 
-list_move_tail(struct list_head *entry,
-	       struct list_head *head)
+static void list_move_tail(struct list_head *entry,
+	       			  struct list_head *head)
 {
 	__list_del(entry->prev, entry->next);
 	list_add_tail(entry, head);
@@ -125,8 +119,7 @@ list_move_tail(struct list_head *entry,
  *
  * @return True if the list contains one or more elements or False otherwise.
  */
-static inline int
-list_empty(struct list_head *head)
+static int list_empty(struct list_head *head)
 {
 	return head->next == head;
 }
@@ -201,8 +194,8 @@ list_empty(struct list_head *head)
  * @param pos Iterator variable of the list head.
  * @param head List head
  */
-#define list_for_each_entry(pos, head)				\
-	for (pos  = (head)->next;						\
+#define list_for_each_entry(pos, head)					\
+	for (pos  = (head)->next;					\
 	     pos != head;						\
 	     pos  = (pos)->next)
 

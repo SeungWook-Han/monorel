@@ -23,8 +23,8 @@ struct hash {
 #define HASH(name, size, ops) 						\
 	struct hash name = HASH_INIT(size, ops);
 
-static inline struct list_head *
-hash_search(struct hash *hash, struct list_head *entry)
+static struct list_head *hash_search(struct hash *hash, 
+					    struct list_head *entry)
 {
 	unsigned int key = hash->h_ops->hashing(entry);
 	if (key < hash->table_size) {
@@ -38,8 +38,7 @@ hash_search(struct hash *hash, struct list_head *entry)
 }
 
 /* Duplicated data can not be inserted. */
-static inline void
-hash_insert(struct hash *hash, struct list_head *entry)
+static void hash_insert(struct hash *hash, struct list_head *entry)
 {
 	unsigned int key = hash->h_ops->hashing(entry);
 	
@@ -51,8 +50,7 @@ hash_insert(struct hash *hash, struct list_head *entry)
 	}
 }
 
-static inline void
-hash_delete(struct hash *hash, struct list_head *entry)
+static void hash_delete(struct hash *hash, struct list_head *entry)
 {
 	if (hash_search(hash, entry) == entry) {
 		list_del_init(entry);
