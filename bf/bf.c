@@ -1,20 +1,17 @@
 /* bf.c 
- * 2017.3.11 by Togepi
- * TODO Refactoring hash related function
+ * 2017.3.11 by Togepi (Update 3.20 for refined data structure)
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "minirel.h"
 #include "bf.h"
+#include "list.h"
 
 #define HASH_HEAD(hash_elem) (hash_elem->prev_entry == NULL)
 #define HASH_TAIL(hash_elem) (hash_elem->next_entry == NULL)
 
-/*
-#define IS_LRU_EMPTY() (lru_head.next_page == &(lru_tail))
-*/
 #define IS_LRU_EMPTY() (lru_counter == 0)
 #define IS_LRU_TAIL(page) (page == &(lru_tail))
 
