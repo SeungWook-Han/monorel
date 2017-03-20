@@ -45,8 +45,8 @@ typedef struct BFhash_entry {
  * prototypes for BF-layer functions
  */
 void BF_Init(void);
-int BF_AllocBuf(BFreq bq, PFpage **fpage);
 int BF_GetBuf(BFreq bq, PFpage **fpage);
+int BF_AllocBuf(BFreq bq, PFpage **fpage);
 int BF_UnpinBuf(BFreq bq);
 int BF_TouchBuf(BFreq bq);
 int BF_FlushBuf(int fd);

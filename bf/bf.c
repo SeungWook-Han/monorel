@@ -8,6 +8,7 @@
 #include "minirel.h"
 #include "bf.h"
 #include "list.h"
+#include "hash.h"
 
 #define HASH_HEAD(hash_elem) (hash_elem->prev_entry == NULL)
 #define HASH_TAIL(hash_elem) (hash_elem->next_entry == NULL)
@@ -26,18 +27,9 @@ static struct BFpage lru_head;
 static struct BFpage lru_tail;
 static int lru_counter = 0;
 
-void BF_Init(void);
-int BF_AllocBuf(BFreq bq, PFpage **fpage);
-int BF_GetBuf(BFreq bq, PFpage **fpage);
-int BF_UnpinBuf(BFreq bq);
-int BF_TouchBuf(BFreq bq);
-int BF_FlushBuf(int fd);
-void BF_ShowBuf(void);
-
 static struct BFhash_entry *hashing(int fd, 
 			      	    int page_num, 
 			            struct BFhash_entry *hash_elem);
-
 
 static struct BFpage *free_pages_get(void)
 {
