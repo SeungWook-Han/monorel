@@ -5,6 +5,7 @@
 #include "list.h"
 
 
+/* Should be defined by user */
 struct hash_operations {
 	/* Returing the key according to the data */
 	unsigned int (*hashing)(struct list_head *data);
@@ -20,7 +21,7 @@ struct hash {
 #define HASH_INIT(size, ops) { size, 0, 					\
 	(struct list_head *)malloc(sizeof(struct list_head) * size), ops}
 
-#define HASH(name, size, ops) 						\
+#define HASH(name, size, ops) 							\
 	struct hash name = HASH_INIT(size, ops);
 
 static struct list_head *hash_search(struct hash *hash, 
