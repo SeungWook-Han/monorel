@@ -245,15 +245,17 @@ static struct BFpage *evict_page(struct BFpage *target)
 {
 	if (target == NULL) {
 		target = evict_policy();
+	}	
+	
+	if (target != NULL) {
+		if (flush_page(target))
+			return NULL;	
+		if (hash_delete(target)) 
+			return NULL;
+		if (lru_delete(target)) 
+			return NULL;
 	}
 
-	if (flush_page(target))
-		return NULL;	
-	if (hash_delete(target)) 
-		return NULL;
-	if (lru_delete(target)) 
-		return NULL;
-	
 	return target;
 }
 
@@ -336,13 +338,14 @@ int BF_AllocBuf(BFreq bq, PFpage **fpage)
 	struct BFpage *free_page;
 
 	hash_elem = hashing(bq.fd, bq.pagenum, NULL);
+	
 	if (hash_elem != NULL) return BFE_INCOMPLETEWRITE; 
-
 	free_page = free_pages_get();
+
+
 	if (free_page == NULL) {
 		
 		free_page = evict_page(NULL);
-		
 		if (free_page == NULL) return BFE_NOMEM;
 
 		free_pages_return(free_page);

@@ -81,7 +81,6 @@ manage_many_files()
 
   if (! error_flag) create_file_counter++;
 
-  
   error_flag = FALSE;
 
   printf("\n Opening and closing %d files\n",PF_FTAB_SIZE);
@@ -103,6 +102,7 @@ manage_many_files()
   }
   if (! error_flag) close_file_counter ++;
 
+  printf("test\n");
   sprintf(command, "ls -al %s*", "tmpfile");
   system(command);
   fflush(NULL);
@@ -171,7 +171,6 @@ void writefile()
 
   for (i=0; i < NUM_PAGES; i++) {
     if ((error = PF_AllocPage(fd,&pagenum,&buf)) == PFE_OK) {
-	
 	memcpy(buf, (char *)&i, sizeof(int));
 	pages_allocated++;
     } else {
@@ -180,7 +179,6 @@ void writefile()
 	printf("PF_AllocPage failed with fd=%d, pagenum=%d\n",fd,i);
     }
   }
-
 
   if (pages_allocated == BF_MAX_BUFS) alloc_page_counter++;
   if (page_alloc_failed == NUM_PAGES-BF_MAX_BUFS) alloc_page_counter++;
@@ -206,10 +204,7 @@ void writefile()
 	printf("PF_DirtyPage failed with fd=%d, pagenum=%d\n",fd,i);
     }
   }
-  if (! error_flag) {
-	printf("unpinned 1\n");
-	unpin_page_counter++;
-  }
+  if (! error_flag) unpin_page_counter++;
 
   sprintf(command, "ls -al %s*", dbFileName);
   system(command);
@@ -392,10 +387,8 @@ void close_file_pinned()
       value = 2017;
       memcpy(buf, (char *)&value, sizeof(int));
 
-      if ((error = PF_UnpinPage(fd,pagenum,TRUE))!= PFE_OK) {
+      if ((error = PF_UnpinPage(fd,pagenum,TRUE))!= PFE_OK)
 	printf("\t Fail to unpin a page\n");
-      	printf("test Unpin fail\n");
-      }
       else {
 	unpin_page_counter++;
 
@@ -485,9 +478,6 @@ main(int argc, char **argv)
 
   readfile();
   read_invalid_page(); 
-
-
-	printf("\t\t Success?\n");
 
   close_file_pinned();
 

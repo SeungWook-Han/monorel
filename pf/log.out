@@ -1,0 +1,335 @@
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 db-test
+
+Testing create, open, close a single file 
+fd : 3
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.0
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.1
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.10
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.11
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.12
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.13
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.14
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.15
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.16
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.17
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.18
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.19
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.2
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.3
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.4
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.5
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.6
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.7
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.8
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 tmpfile.ifvega.9
+
+ Creating 20 files 
+fd : 4
+fd : 5
+fd : 6
+fd : 7
+fd : 8
+fd : 9
+fd : 10
+fd : 11
+fd : 12
+fd : 13
+fd : 14
+fd : 15
+fd : 16
+fd : 17
+fd : 18
+fd : 19
+fd : 20
+fd : 21
+fd : 22
+fd : 23
+
+ Opening and closing 20 files
+
+ Destroying 20 files
+-rw-rw-r-- 1 seunguk seunguk 4096  4월 28 17:29 db-test
+
+ Opening a non-existing file
+fd : 24
+
+ Testing page allocation, allocating 100 pages 
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+PF_AllocPage failed with fd=19, pagenum=40
+PF_AllocPage failed with fd=19, pagenum=41
+PF_AllocPage failed with fd=19, pagenum=42
+PF_AllocPage failed with fd=19, pagenum=43
+PF_AllocPage failed with fd=19, pagenum=44
+PF_AllocPage failed with fd=19, pagenum=45
+PF_AllocPage failed with fd=19, pagenum=46
+PF_AllocPage failed with fd=19, pagenum=47
+PF_AllocPage failed with fd=19, pagenum=48
+PF_AllocPage failed with fd=19, pagenum=49
+PF_AllocPage failed with fd=19, pagenum=50
+PF_AllocPage failed with fd=19, pagenum=51
+PF_AllocPage failed with fd=19, pagenum=52
+PF_AllocPage failed with fd=19, pagenum=53
+PF_AllocPage failed with fd=19, pagenum=54
+PF_AllocPage failed with fd=19, pagenum=55
+PF_AllocPage failed with fd=19, pagenum=56
+PF_AllocPage failed with fd=19, pagenum=57
+PF_AllocPage failed with fd=19, pagenum=58
+PF_AllocPage failed with fd=19, pagenum=59
+PF_AllocPage failed with fd=19, pagenum=60
+PF_AllocPage failed with fd=19, pagenum=61
+PF_AllocPage failed with fd=19, pagenum=62
+PF_AllocPage failed with fd=19, pagenum=63
+PF_AllocPage failed with fd=19, pagenum=64
+PF_AllocPage failed with fd=19, pagenum=65
+PF_AllocPage failed with fd=19, pagenum=66
+PF_AllocPage failed with fd=19, pagenum=67
+PF_AllocPage failed with fd=19, pagenum=68
+PF_AllocPage failed with fd=19, pagenum=69
+PF_AllocPage failed with fd=19, pagenum=70
+PF_AllocPage failed with fd=19, pagenum=71
+PF_AllocPage failed with fd=19, pagenum=72
+PF_AllocPage failed with fd=19, pagenum=73
+PF_AllocPage failed with fd=19, pagenum=74
+PF_AllocPage failed with fd=19, pagenum=75
+PF_AllocPage failed with fd=19, pagenum=76
+PF_AllocPage failed with fd=19, pagenum=77
+PF_AllocPage failed with fd=19, pagenum=78
+PF_AllocPage failed with fd=19, pagenum=79
+PF_AllocPage failed with fd=19, pagenum=80
+PF_AllocPage failed with fd=19, pagenum=81
+PF_AllocPage failed with fd=19, pagenum=82
+PF_AllocPage failed with fd=19, pagenum=83
+PF_AllocPage failed with fd=19, pagenum=84
+PF_AllocPage failed with fd=19, pagenum=85
+PF_AllocPage failed with fd=19, pagenum=86
+PF_AllocPage failed with fd=19, pagenum=87
+PF_AllocPage failed with fd=19, pagenum=88
+PF_AllocPage failed with fd=19, pagenum=89
+PF_AllocPage failed with fd=19, pagenum=90
+PF_AllocPage failed with fd=19, pagenum=91
+PF_AllocPage failed with fd=19, pagenum=92
+PF_AllocPage failed with fd=19, pagenum=93
+PF_AllocPage failed with fd=19, pagenum=94
+PF_AllocPage failed with fd=19, pagenum=95
+PF_AllocPage failed with fd=19, pagenum=96
+PF_AllocPage failed with fd=19, pagenum=97
+PF_AllocPage failed with fd=19, pagenum=98
+PF_AllocPage failed with fd=19, pagenum=99
+
+ Marking allocated 40 pages as dirty 
+test
+PF_DirtyPage failed with fd=19, pagenum=0
+
+ Unpinning 40 pages 
+-rw-rw-r-- 1 seunguk seunguk 172032  4월 28 17:29 db-test
+
+ Allocating another page after unpining
+-rw-rw-r-- 1 seunguk seunguk 581632  4월 28 17:29 db-test
+
+ Testing page allocation, allocating 100 pages 
+
+Printing file content, 201 pages should be read
+		Page read 1, value_read 0
+		Page read 2, value_read 1
+		Page read 3, value_read 2
+		Page read 4, value_read 3
+		Page read 5, value_read 4
+		Page read 6, value_read 5
+		Page read 7, value_read 6
+		Page read 8, value_read 7
+		Page read 9, value_read 8
+		Page read 10, value_read 9
+		Page read 11, value_read 10
+		Page read 12, value_read 11
+		Page read 13, value_read 12
+		Page read 14, value_read 13
+		Page read 15, value_read 14
+		Page read 16, value_read 15
+		Page read 17, value_read 16
+		Page read 18, value_read 17
+		Page read 19, value_read 18
+		Page read 20, value_read 19
+		Page read 21, value_read 20
+		Page read 22, value_read 21
+		Page read 23, value_read 22
+		Page read 24, value_read 23
+		Page read 25, value_read 24
+		Page read 26, value_read 25
+		Page read 27, value_read 26
+		Page read 28, value_read 27
+		Page read 29, value_read 28
+		Page read 30, value_read 29
+		Page read 31, value_read 30
+		Page read 32, value_read 31
+		Page read 33, value_read 32
+		Page read 34, value_read 33
+		Page read 35, value_read 34
+		Page read 36, value_read 35
+		Page read 37, value_read 36
+		Page read 38, value_read 37
+		Page read 39, value_read 38
+		Page read 40, value_read 39
+		Page read 41, value_read 9999
+		Page read 42, value_read 0
+		Page read 43, value_read 1
+		Page read 44, value_read 2
+		Page read 45, value_read 3
+		Page read 46, value_read 4
+		Page read 47, value_read 5
+		Page read 48, value_read 6
+		Page read 49, value_read 7
+		Page read 50, value_read 8
+		Page read 51, value_read 9
+		Page read 52, value_read 10
+		Page read 53, value_read 11
+		Page read 54, value_read 12
+		Page read 55, value_read 13
+		Page read 56, value_read 14
+		Page read 57, value_read 15
+		Page read 58, value_read 16
+		Page read 59, value_read 17
+		Page read 60, value_read 18
+		Page read 61, value_read 19
+		Page read 62, value_read 20
+		Page read 63, value_read 21
+		Page read 64, value_read 22
+		Page read 65, value_read 23
+		Page read 66, value_read 24
+		Page read 67, value_read 25
+		Page read 68, value_read 26
+		Page read 69, value_read 27
+		Page read 70, value_read 28
+		Page read 71, value_read 29
+		Page read 72, value_read 30
+		Page read 73, value_read 31
+		Page read 74, value_read 32
+		Page read 75, value_read 33
+		Page read 76, value_read 34
+		Page read 77, value_read 35
+		Page read 78, value_read 36
+		Page read 79, value_read 37
+		Page read 80, value_read 38
+		Page read 81, value_read 39
+		Page read 82, value_read 40
+		Page read 83, value_read 41
+		Page read 84, value_read 42
+		Page read 85, value_read 43
+		Page read 86, value_read 44
+		Page read 87, value_read 45
+		Page read 88, value_read 46
+		Page read 89, value_read 47
+		Page read 90, value_read 48
+		Page read 91, value_read 49
+		Page read 92, value_read 50
+		Page read 93, value_read 51
+		Page read 94, value_read 52
+		Page read 95, value_read 53
+		Page read 96, value_read 54
+		Page read 97, value_read 55
+		Page read 98, value_read 56
+		Page read 99, value_read 57
+		Page read 100, value_read 58
+		Page read 101, value_read 59
+		Page read 102, value_read 60
+		Page read 103, value_read 61
+		Page read 104, value_read 62
+		Page read 105, value_read 63
+		Page read 106, value_read 64
+		Page read 107, value_read 65
+		Page read 108, value_read 66
+		Page read 109, value_read 67
+		Page read 110, value_read 68
+		Page read 111, value_read 69
+		Page read 112, value_read 70
+		Page read 113, value_read 71
+		Page read 114, value_read 72
+		Page read 115, value_read 73
+		Page read 116, value_read 74
+		Page read 117, value_read 75
+		Page read 118, value_read 76
+		Page read 119, value_read 77
+		Page read 120, value_read 78
+		Page read 121, value_read 79
+		Page read 122, value_read 80
+		Page read 123, value_read 81
+		Page read 124, value_read 82
+		Page read 125, value_read 83
+		Page read 126, value_read 84
+		Page read 127, value_read 85
+		Page read 128, value_read 86
+		Page read 129, value_read 87
+		Page read 130, value_read 88
+		Page read 131, value_read 89
+		Page read 132, value_read 90
+		Page read 133, value_read 91
+		Page read 134, value_read 92
+		Page read 135, va-rw-rw-r-- 1 seunguk seunguk 581632  4월 28 17:29 db-test
+lue_read 93
+		Page read 136, value_read 94
+		Page read 137, value_read 95
+		Page read 138, value_read 96
+		Page read 139, value_read 97
+		Page read 140, value_read 98
+		Page read 141, value_read 99
+
+ Attempting to read a non-existing page from file 
+
+ Now more tests on page management 
+
+ Closing the file again after unpinning 
+	 Fail to unpin a page
+	 Fail to close a file 
+
+ Summary 
+	File creation : 2/2
+	File opening  : 3/3
+	File closing  : 2/4
+	File destruct : 1/1
+
+	Page allocation     : 4/4
+	Marking dirty pages : 1/2
+	Unpinning pages     : 4/5
+	Getting first page : 1/1
+	Getting this page  : 2/2
+	Getting next page  : 1/1
+
+Total 21/25

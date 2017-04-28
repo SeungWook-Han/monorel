@@ -34,11 +34,11 @@ bool_t PF_SearchFile(char *filename)
 
 	if ((fd = open(filename, O_RDONLY)) > 0) {
 		close(fd);
-		printf("File already exist!\n");
+		/*printf("File already exist!\n"); */
 		return TRUE;
 	}
 
-	printf("File not exist!\n");
+	/* printf("File not exist!\n"); */
 	return FALSE;
 }
 
@@ -65,9 +65,22 @@ int PF_CreateFile(char *filename)
 	struct PFftab_ele *elem;
 	struct PFpage page;
 
-	if (PF_SearchFile(filename) || (fd = creat(filename, 0644)) < 0) {
+/*
+	if (PF_SearchFile(filename) || (fd = creat(filename, 0644)) < 3) {
 		return PFE_FILEOPEN;
 	}
+*/
+
+	if (PF_SearchFile(filename)) {
+		/* File already exist */
+		printf("File Already exist\n");
+		return PFE_FILEOPEN;
+	}
+
+	if ((fd = creat(filename, 0666)) < 3) {
+		return PFE_FILEOPEN;
+	}
+
 
 	/* Find free elem in file table (Need be optimized) */
 	for (i = 0; i < PF_FTAB_SIZE; i++) {
@@ -83,6 +96,9 @@ int PF_CreateFile(char *filename)
 	elem->hdr.numpages = 0;
 	elem->hdr.offset = DATA_PAGE_OFFSET;
 
+
+	printf("fd : %d\n", fd);
+
 	if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
 		return PFE_FILEIO;
 	}
@@ -90,7 +106,7 @@ int PF_CreateFile(char *filename)
 		return PFE_FILEIO;
 	}
 
-	close(fd);
+/*	close(fd); */
 	return PFE_OK;
 }
 
@@ -130,7 +146,7 @@ int  PF_OpenFile(char *filename)
 
 		elem = &(pf_table[index]);
 		
-		if ((pread(elem->unixfd, page.pagebuf, 
+		if ((pread(fd, page.pagebuf, 
 			   PAGE_SIZE, META_PAGE_OFFSET)) != PAGE_SIZE) 
 			return PFE_FILEIO;
 	
@@ -164,14 +180,14 @@ int  PF_CloseFile(int fd)
 	bq.fd = elem->inode;
 	bq.unixfd = elem->unixfd;
 	numpages = elem->hdr.numpages;
-
+/*
 	for (i = DATA_PAGE_OFFSET; i < DATA_PAGE_OFFSET + numpages; i++) {
 		bq.pagenum = i;
 		if (BF_UnpinBuf(bq) != BFE_OK) {
 			return PFE_CLOSE;
 		}
 	}
-
+*/
 	if (BF_FlushBuf(elem->inode) != BFE_OK) {
 		return PFE_CLOSE;
 	}
@@ -190,7 +206,7 @@ int  PF_CloseFile(int fd)
 	
 	elem->valid = FALSE;
 	elem->hdrchanged = FALSE;
-	close(fd);
+	close(bq.unixfd);
 
 	return PFE_OK;
 }
@@ -314,12 +330,10 @@ int PF_DirtyPage(int fd, int pagenum)
 	elem = &pf_table[fd];
 	
 	if (elem->valid == FALSE || elem->inode != fd) {
-		printf("test1\n");
 		return PFE_GETDIRTY;
 	}
 
 	if (elem->hdr.numpages < pagenum) {
-		printf("test2\n");
 		return PFE_GETDIRTY;
 	}
 
@@ -328,7 +342,6 @@ int PF_DirtyPage(int fd, int pagenum)
 	bq.pagenum = pagenum;
 	
 	if (BF_TouchBuf(bq) != BFE_OK) {
-		printf("test\n");
 		return PFE_GETDIRTY;
 	}
 
@@ -357,9 +370,7 @@ int PF_UnpinPage(int fd, int pagenum, int dirty)
 	bq.fd = fd;
 	bq.unixfd = elem->unixfd;
 	bq.pagenum = pagenum;
-	if (BF_UnpinBuf(bq) != BFE_OK) {
-		return PFE_UNPINPAGE;
-	}
+	BF_UnpinBuf(bq);
 
 	return PFE_OK;
 }
