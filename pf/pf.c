@@ -37,14 +37,10 @@ bool_t PF_SearchTable(char *filename, int *ret_index)
 bool_t PF_SearchFile(char *filename)
 {
 	int fd;
-
 	if ((fd = open(filename, O_RDONLY)) > 0) {
 		close(fd);
-		/*printf("File already exist!\n"); */
 		return TRUE;
 	}
-
-	/* printf("File not exist!\n"); */
 	return FALSE;
 }
 
@@ -305,8 +301,6 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf)
 	if (PF_GetThisPage(fd, elem->hdr.offset, pagebuf) != PFE_OK) {
 		return PFE_GETNEXT;
 	}
-
-/*	printf("offset : %d, numpages : %d\n", elem->hdr.offset, elem->hdr.numpages); */
 
 	*pagenum = elem->hdr.offset;
 	elem->hdr.offset++;

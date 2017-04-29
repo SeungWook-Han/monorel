@@ -81,7 +81,6 @@ manage_many_files()
 
   if (! error_flag) create_file_counter++;
 
-  
   error_flag = FALSE;
 
   printf("\n Opening and closing %d files\n",PF_FTAB_SIZE);
@@ -103,6 +102,7 @@ manage_many_files()
   }
   if (! error_flag) close_file_counter ++;
 
+  printf("test\n");
   sprintf(command, "ls -al %s*", "tmpfile");
   system(command);
   fflush(NULL);
@@ -151,8 +151,6 @@ void writefile()
   int open_files, created_files;
   int pages_allocated, page_alloc_failed, dirty_pages;
 
-  int is_passed = 0;
-
   unlink(dbFileName);
   if ((error = PF_CreateFile(dbFileName)) != PFE_OK) {
       printf("Could not test writing to file, fail to create a file\n");
@@ -173,7 +171,6 @@ void writefile()
 
   for (i=0; i < NUM_PAGES; i++) {
     if ((error = PF_AllocPage(fd,&pagenum,&buf)) == PFE_OK) {
-	
 	memcpy(buf, (char *)&i, sizeof(int));
 	pages_allocated++;
     } else {
@@ -183,15 +180,9 @@ void writefile()
     }
   }
 
+  if (pages_allocated == BF_MAX_BUFS) alloc_page_counter++;
+  if (page_alloc_failed == NUM_PAGES-BF_MAX_BUFS) alloc_page_counter++;
 
-  if (pages_allocated == BF_MAX_BUFS) {
-	  alloc_page_counter++;
-	  is_passed++;
-  }
-  if (page_alloc_failed == NUM_PAGES-BF_MAX_BUFS) {
-	  alloc_page_counter++;
-  	  is_passed++;
-  }
 
   dirty_pages = 0;
   error_flag = FALSE;
@@ -203,10 +194,7 @@ void writefile()
 	printf("PF_DirtyPage failed with fd=%d, pagenum=%d\n",fd,i);
     }
   }
-  if (!error_flag) {
-	  dirty_page_counter++;
-  	  is_passed++;
-  }
+  if (! error_flag) dirty_page_counter++;
 
   printf("\n Unpinning %d pages \n", pages_allocated);
 
@@ -216,10 +204,7 @@ void writefile()
 	printf("PF_DirtyPage failed with fd=%d, pagenum=%d\n",fd,i);
     }
   }
-  if (! error_flag) {
-	unpin_page_counter++;
-	is_passed++;
-  }
+  if (! error_flag) unpin_page_counter++;
 
   sprintf(command, "ls -al %s*", dbFileName);
   system(command);
@@ -232,19 +217,16 @@ void writefile()
 	i = 9999;
 	memcpy(buf, (char *)&i, sizeof(int));
 	alloc_page_counter++;
-	is_passed++;
   } else
 	printf("\t Fail to allocate a page\n");
 
   if(PF_DirtyPage(fd, pagenum) == PFE_OK) {
 	dirty_page_counter++;
-	is_passed++;
   } else
 	printf("\t PF_DirtyPage failed\n");
 
   if ((error = PF_UnpinPage(fd,pagenum,FALSE)) == PFE_OK) {
 	unpin_page_counter++;
-	is_passed++;
   } else
 	printf("\t Fail to unfix a page\n");
 
@@ -252,16 +234,9 @@ void writefile()
   if ((error = PF_CloseFile(fd))!= PFE_OK)
       printf("\t Fail to close a file \n");
 
-  sprintf(command, "ls -alh %s*", dbFileName);
+  sprintf(command, "ls -al %s*", dbFileName);
   system(command);
   fflush(NULL);
-
-  if (is_passed == 7) {
-	printf("\n\n Write Test : Pass (Written Page : %d)\n\n", pages_allocated + 1);
-  } else {
-	printf("\n\n Write Test : Fail \n\n");
-  }
-
 }
 
 /*
@@ -278,9 +253,6 @@ void writefileagain()
   bool_t error_alloc=FALSE, error_unpin=FALSE;
   int error;
 
-  int is_passed = 0;
-  int page_alloc = 0;
-
   if ((fd=PF_OpenFile(dbFileName))<0) {
       printf("Could not test writing to file, fail to open a file \n");
       return;
@@ -294,26 +266,20 @@ void writefileagain()
     if ((error = PF_AllocPage(fd,&pagenum,&buf))!= PFE_OK) {
 	error_alloc = TRUE;
 	printf("writefileagain: PF_AllocPage failed with fd=%d, i=%d\n",fd,i);
-    } else {
+    } else
 	memcpy(buf, (char *)&i, sizeof(int));
-    	page_alloc++;
-    }
 
     if ((error = PF_UnpinPage(fd, pagenum, TRUE))!= PFE_OK)
 	error_unpin = TRUE;
   }
 
-  if (! error_alloc) {
+  if (! error_alloc)
     alloc_page_counter++;
-    is_passed++;
-  }
   else
     printf("\t writefileagain: Page allocation failed \n");
 
-  if (! error_unpin) {
+  if (! error_unpin)
     unpin_page_counter++;
-    is_passed++;
-  }
   else
     printf("\t writefileagain: Unpinning page failed \n");
   
@@ -321,18 +287,9 @@ void writefileagain()
   if ((error = PF_CloseFile(fd))!= PFE_OK)
       printf("\t Fail to close a file\n");
 
-  sprintf(command, "ls -alh %s*", dbFileName);
+  sprintf(command, "ls -al %s*", dbFileName);
   system(command);
   fflush(NULL);
-
-  if (is_passed == 2) {
-	printf("\n\n Write File Again Test : Pass (Written Page : %d)\n\n",
-			page_alloc);
-  } else {
-	printf("\n\n Write File Again Test : Fail \n\n");
-  }
-
-
 }
 
 /*
@@ -344,9 +301,7 @@ void readfile()
   char *buf;
   int pagenum;
   bool_t error_unpin=FALSE;
- 
-  int is_passed = 0;
-
+  
   printf("\nPrinting file content, %d pages should be read\n", 2*NUM_PAGES+1 );
 
   if ((fd=PF_OpenFile(dbFileName))<0) {
@@ -362,33 +317,19 @@ void readfile()
 	error_unpin = TRUE;
     }
 
-  if (! error_unpin) {
-    is_passed++;
+  if (! error_unpin)
     unpin_page_counter++;
-  }
   else
     printf("\t Fail to unpin a page\n");
 
-  if (error == PFE_EOF) {
-     is_passed++;
-     get_next_counter++;
-  }
+  if (error == PFE_EOF)
+    get_next_counter++;
   else
     printf("\t Fail to read the whole file\n");
-
-
-/*  printf("Get Next Page Error No : %d\n", error); */
 
   /* close the file */
   if ((error = PF_CloseFile(fd))!= PFE_OK)
       printf("\t Fail to close a file\n");
-
-  if (is_passed == 2) {
-	printf("\n\n Read Test : Pass \n\n");
-  } else {
-	printf("\n\n Read Test : Fail \n\n");
-  }
-
 }
 
 /*
@@ -446,10 +387,8 @@ void close_file_pinned()
       value = 2017;
       memcpy(buf, (char *)&value, sizeof(int));
 
-      if ((error = PF_UnpinPage(fd,pagenum,TRUE))!= PFE_OK) {
+      if ((error = PF_UnpinPage(fd,pagenum,TRUE))!= PFE_OK)
 	printf("\t Fail to unpin a page\n");
-      	printf("test Unpin fail\n");
-      }
       else {
 	unpin_page_counter++;
 
@@ -535,19 +474,15 @@ main(int argc, char **argv)
   manage_many_files();
 
   writefile();
-
-  
   writefileagain();
 
   readfile();
-  
   read_invalid_page(); 
 
   close_file_pinned();
 
-  
   /* end test */
-  sprintf(command, "ls -alh %s", dbFileName);
+  sprintf(command, "ls -al %s", dbFileName);
   system(command);
   fflush(NULL);
 

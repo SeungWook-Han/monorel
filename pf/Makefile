@@ -1,4 +1,4 @@
-MINIREL_HOME=/home/seunguk/monorel
+MINIREL_HOME=../
 
 # Makefile for PF layer
 CIN	= ci -l
@@ -49,6 +49,7 @@ ${LIB}test-ifvega: ${LIB}test-ifvega.o ${LIBS}
 lib${LIB}.a:$(OBJS)
 	ar cr lib${LIB}.a $(OBJS)
 	ranlib lib${LIB}.a
+
 $(OBJS): ${INCS}
 
 ciall:

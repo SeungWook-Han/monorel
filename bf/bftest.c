@@ -8,8 +8,7 @@
 #include "minirel.h"
 #include "bf.h"
 
-/* #include "buf.h" */
-
+#define FILE_CREATE_MASK (S_IRUSR|S_IWUSR|S_IRGRP)
 
 /*
  * default files
@@ -17,123 +16,8 @@
 #define FILE1	"file1"
 #define FD1	10
 
-#define STR_SIZE 32
-
 static BFreq breq;
-
-/*
- * Open the multiple files, and allocate pages in the file,
- * and write the page number into the data, then close file.
- */
-void random_write_file(int number_of_files)
-{
-	PFpage *fpage;
-	int *unix_fds;
-	int i, j;
-	char filename[STR_SIZE];
-	int error;
-	int read_check = 1;
-
-	unix_fds = malloc(sizeof(int) * (number_of_files));
-
-	printf("\n******** files open (number : %d) *********\n", number_of_files);
-	for (i = 0; i < number_of_files; i++) {
-	
-		sprintf(filename, "file%d", i + 1);
-    		unlink(filename);
-
-		if ((unix_fds[i] = open(filename, O_RDWR | O_CREAT)) < 0) {
-			printf("file open failed: file%d", i + 1);
-			exit(-1);
-		}
-		printf("file%d ", i + 1);
-	}
-
-	printf("\n******** files write **********\n");
-	for (i = 0; i < 2 * BF_MAX_BUFS; i++) {
-		for (j = 0; j < number_of_files; j++) {
-			
-			breq.fd = unix_fds[j];
-			breq.unixfd = unix_fds[j];
-			
-			if (j % 2 == 0) breq.pagenum = i;
-			else		breq.pagenum = (2 * BF_MAX_BUFS) - 1 - i;
-
-			if ((error = BF_AllocBuf(breq, &fpage)) != BFE_OK) {
-				printf("alloc buffer failed");
-				exit(-11);
-			}
-			
-			sprintf((char*)fpage,"%4d%4d", breq.fd, breq.pagenum);
-			printf("allocated page: fd=%d, pagenum=%d\n", breq.fd, breq.pagenum);
-
-			/* making dirty page */
-			if(BF_TouchBuf(breq) != BFE_OK){
-	    			printf("touching buffer error, %d\n",i);
-				exit(-1);
-			}
-
-			/* unpin this page */
-			if ((error = BF_UnpinBuf(breq))!= BFE_OK){
-				printf("unpin buffer failed");
-				exit(-11);
-			}
-		}
-	}
-
-
-	printf("\n********** file read *************\n");
-	for (i = 0; i < 2 * BF_MAX_BUFS; i++) {
-		for (j = 0; j < number_of_files; j++) {
-
-			int read_fd, read_pagenum;
-		
-			breq.fd = unix_fds[j];
-			breq.unixfd = unix_fds[j];
-			
-			if (j % 2 == 0) breq.pagenum = (2 * BF_MAX_BUFS) - 1 - i;
-			else		breq.pagenum = i;
-
-			if((error = BF_GetBuf(breq, &fpage)) != BFE_OK) {
-				printf("getBuf failed: file%d, %d", j + 1, i);
-				exit(-1);
-			}
-
-			sscanf((char*)fpage,"%4d%4d",&read_fd, &read_pagenum);
-			
-			printf("(request) unix_fd : %d, page_num : %d, (data) unix_fd : %d, page_num : %d ",
-					breq.unixfd, breq.pagenum, read_fd, read_pagenum);
-
-			if (breq.unixfd == read_fd && breq.pagenum == read_pagenum) {
-				printf("CORRECT\n");
-			} else {
-				printf("IN-CORRECT!!!\n");
-				read_check = read_check & 0;
-			}
-			fflush(stdout);
-
-			/* unpin this page */
-			if ((error = BF_UnpinBuf(breq))!= BFE_OK){
-			    printf("unpin buffer failed");
-			    exit(-11);
-			}
-		}
-	}
-
-	/* Flush all buffer pages for this file */
-	for (j = 0; j < number_of_files; j++) {
-		
-		if((error = BF_FlushBuf(unix_fds[j])) != BFE_OK) {
-			printf("flush buffer failed");
-			exit(-12);
-		}
-	}
-	printf("\n ********** eof reached **********\n");
-
-	if (read_check) printf("\nAll Correct...!\n");
-
-	return ;
-}
+char	header[PAGE_SIZE];
 
 /*
  * Open the file, allocate as many pages in the file as the buffer manager
@@ -143,16 +27,23 @@ void writefile(char *fname)
 {
     PFpage *fpage;
     int i;
-    int fd, unixfd, pagenum;
+    int fd,unixfd,pagenum;
     int error;
 
+    printf("\n******** %s opened for write ***********\n",fname);
+
     /* open file1 */
-    if ((unixfd = open(fname, O_RDWR|O_CREAT))<0){
+    if ((unixfd = open(fname, O_RDWR|O_CREAT, FILE_CREATE_MASK))<0){
 	printf("open failed: file1");
 	exit(-1);
     }
 
-    printf("\n******** %s opened for write ***********\n",fname);
+    /* write an empty page header */
+    memset(header, 0x00, PAGE_SIZE);
+    if(write(unixfd, header, PAGE_SIZE) != PAGE_SIZE) {
+	fprintf(stderr,"writefile writing header failed: %s\n",fname);
+	exit(-1);
+    }
 
     breq.fd = FD1;
     breq.unixfd = unixfd;
@@ -297,17 +188,13 @@ void printfile(char *fname)
 }
 
 /*
- * general tests of PF layer
+ * general tests of BF layer
  */
-void testpf1(void)
+void testbf1(void)
 {
-    int		i, error, pagenum;
-    char*	buf;
-    int		fd1, fd2;
     char        command[128];
-    int temp;
 
-    /* Making sure file don't exist */
+    /* Making sure file doesn't exist */
     unlink(FILE1);
 
     /* write to file1 */
@@ -345,35 +232,13 @@ void testpf1(void)
 */
 }
 
-
-
-int main(int argc, char *argv[])
+main()
 {
-  if (argc != 2) {
-	printf("Wrong input\n");
-  	printf("./bftest [original/random]\n");
-	return 1;
-  }
-
-  /* initialize PF layer */
+  /* initialize BF layer */
   BF_Init();
 
-  if (!strcmp(argv[1], "original")) {
-	  printf("\n************* Starting testpf1 *************\n");
-	  testpf1(); 
-	  printf("\n************* End testpf1 ******************\n");
-
-  } else if (!strcmp(argv[1], "random")) {
-	  printf("\n************* Starting random write test *************\n");
-	  random_write_file(8);
-	  printf("\n************* End random write test ******************\n");
-
-  } else {
-	printf("Wrong input\n");
-  	printf("./bftest [orignal/random]\n");
-	return 1;
-  }
-
-  return 0;
+  printf("\n************* Starting testbf1 *************\n");
+  testbf1(); 
+  printf("\n************* End testbf1 ******************\n");
 }
 
