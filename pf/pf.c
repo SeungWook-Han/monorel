@@ -91,11 +91,17 @@ int PF_CreateFile(char *filename)
 	elem->hdr.numpages = 0;
 	elem->hdr.offset = 0;
 
-
+/*
 	if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
 		return PFE_FILEIO;
 	}
-	if (pwrite(fd, page.pagebuf, PAGE_SIZE, META_PAGE_OFFSET) != PAGE_SIZE) {
+	if (pwrite(fd, page.pagebuf, sizeof(int), META_PAGE_OFFSET) != PAGE_SIZE) {
+		return PFE_FILEIO;
+	}
+*/
+	
+	if (pwrite(elem->unixfd, &(elem->hdr.numpages), 
+				sizeof(int), 0) != sizeof(int)) {
 		return PFE_FILEIO;
 	}
 
@@ -144,13 +150,13 @@ int  PF_OpenFile(char *filename)
 
 		elem = &(pf_table[index]);
 		
-		if ((pread(fd, page.pagebuf, 
-			   PAGE_SIZE, META_PAGE_OFFSET)) != PAGE_SIZE) 
+		if ((pread(fd, &elem->hdr.numpages, 
+			   sizeof(int), META_PAGE_OFFSET)) != sizeof(int)) 
 			return PFE_FILEIO;
-	
+/*	
 		if(!sscanf((char*)&page, "%u", &elem->hdr.numpages)) 
 			return PFE_FILEIO;
-		
+*/		
 	} else {
 		elem = &(pf_table[index]);
 	}
@@ -185,15 +191,22 @@ int  PF_CloseFile(int fd)
 	}
 
 	if (elem->hdrchanged == TRUE) {
+	/*
 		struct PFpage page;
 
 		if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
 			return PFE_FILEIO;
 		}
 
-		if (pwrite(elem->unixfd, page.pagebuf, PAGE_SIZE, 0) != PAGE_SIZE) {
+		if (pwrite(elem->unixfd, page.pagebuf, sizeof(int), 0) != PAGE_SIZE) {
 			return PFE_FILEIO;
 		}
+	*/
+		if (pwrite(elem->unixfd, &(elem->hdr.numpages), 
+					sizeof(int), 0) != sizeof(int)) {
+			return PFE_FILEIO;
+		}
+
 	}
 	
 	elem->valid = FALSE;

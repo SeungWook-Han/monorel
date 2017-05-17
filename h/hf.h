@@ -77,8 +77,32 @@ typedef struct {
     int NumPg;                   /* Number of pages in file */
     int NumFrPgFile;             /* Number of free pages in the file */ 
 } HFHeader;
-#endif
+#else
 
+/*
+ * How header page format should be set?
+ * Header page should be allocated for each file. (i.e. Files have each own header page)
+ *
+ * |-----------------------------------------|
+ *    nr_pages  |  rec_siz    ...
+ *     (4KB)    |   (4KB)     ...
+ *   [pf layer] | [hf layer]  ...
+ * |-----------------------------------------|
+ */
+
+typedef struct {
+	int rec_size;           /* Record size */
+	int nr_rec;             /* Number of records per page */
+	int nr_pages;           /* Number of pages in file */
+	int nr_free_pages;	/* Number of free pages in the file */ 
+} HFHeader;
+
+typedef struct {
+	int valid;
+	struct HFHeader header;
+} hf_table_entry;
+#endif
+/* End of ONLY_FOR_REFERENCE */
 
 /******************************************************************************/
 /* The current HF layer error code or HFE_OK if function returned without one */
