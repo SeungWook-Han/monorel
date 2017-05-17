@@ -19,7 +19,7 @@ typedef struct PFftab_ele {
 	bool_t	 	valid;		/* TRUE: opened FALSE: closed */
 	unsigned int	inode;
 	char		*fname;
-	unsigned int	unixfd;
+	unsigned int	unixfd;		/* fd in unix (i.e. return value of creat()) */
 	PFhdr_str	hdr;
 	bool_t		hdrchanged;	/* dirty */
 } PFftable_ele;
@@ -37,6 +37,7 @@ int  PF_AllocPage	(int fd, int *pagenum, char **pagebuf);
 int  PF_GetFirstPage	(int fd, int *pagenum, char **pagebuf);
 int  PF_GetNextPage	(int fd, int *pagenum, char **pagebuf);
 int  PF_GetThisPage	(int fd, int pagenum, char **pagebuf);
+int  PF_GetHeaderPage   (int fd, char **pagebuf);
 int  PF_DirtyPage	(int fd, int pagenum);
 int  PF_UnpinPage	(int fd, int pagenum, int dirty);
 void PF_PrintError	(const char *mesg);

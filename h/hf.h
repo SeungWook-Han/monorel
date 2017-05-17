@@ -58,6 +58,7 @@ bool_t          HF_ValidRecId(int fileDesc, RECID recid);
 
 #define HFE_INVALIDSTATS        -20 /* meaningful only when STATS_XXX macros
                                        are in use */
+#define HFE_FILE_DESTROY	-21 /* File Destory Error */
 
 /******************************************************************************/
 /*	Data structure definition		  			      */

@@ -99,6 +99,8 @@ int PF_CreateFile(char *filename)
 		return PFE_FILEIO;
 	}
 
+	close(fd);
+
 	return PFE_OK;
 }
 
@@ -111,6 +113,10 @@ int PF_DestroyFile(char *filename)
 	return PFE_OK;
 }
 
+/* Should we allow multiple open? 
+ * On this implementation, we allow multiple open (we don't have any multiple open check here.)
+ * If the opened file is tried to be opened again, the table entry wiil be initialized.
+ * */
 int  PF_OpenFile(char *filename)
 {
 	int index = INVALID_INDEX;
@@ -245,6 +251,31 @@ int PF_GetThisPage(int fd, int pagenum, char **pagebuf)
 	bq.fd = elem->inode;
 	bq.unixfd = elem->unixfd;
 	bq.pagenum = pagenum + DATA_PAGE_OFFSET;
+
+	if ((ret = BF_GetBuf(bq, &fpage)) != BFE_OK) {
+		printf("GetBuf Error : %d\n", ret);
+		return PFE_GETTHIS;
+	}
+
+	*pagebuf = fpage->pagebuf;
+	return PFE_OK;
+}
+
+int PF_GetHeaderPage(int fd, char **pagebuf)
+{
+	struct PFftab_ele *elem;
+	BFreq bq;
+	PFpage *fpage;
+	int ret = 0;
+
+	elem = &pf_table[fd];
+	
+	if (elem->valid == FALSE || elem->inode != fd)
+		return PFE_GETTHIS;
+
+	bq.fd = elem->inode;
+	bq.unixfd = elem->unixfd;
+	bq.pagenum = META_PAGE_OFFSET;
 
 	if ((ret = BF_GetBuf(bq, &fpage)) != BFE_OK) {
 		printf("GetBuf Error : %d\n", ret);
