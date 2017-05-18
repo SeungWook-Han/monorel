@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "minirel.h"
 #include "bf.h"
 
@@ -62,7 +63,9 @@ static void free_pages_return(struct BFpage *page)
 	page->dirty = FALSE;
 	page->count = 0;
 	page->page_num = page->fd = page->unix_fd = DESCRIPTOR_INIT_NUM;
-
+	
+	memset(&page->fpage.pagebuf, 0, PAGE_SIZE);
+	
 	if (free_pages == NULL) free_pages = page;
 	else {
 		page->next_page = free_pages;

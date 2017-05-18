@@ -171,6 +171,7 @@ int  PF_OpenFile(char *filename)
 	return elem->inode;
 }
 
+/* If the pages in file are pinned, then return error */
 int  PF_CloseFile(int fd)
 {
 	struct PFftab_ele *elem = &pf_table[fd];
