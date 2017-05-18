@@ -22,8 +22,8 @@
  */
 
 /* Table getting header info of the files */
-struct hf_table_entry *hf_table;
-struct hf_scan_entry *hf_scan_table;
+struct _hf_table_entry *hf_table;
+struct _hf_scan_entry *hf_scan_table;
 
 bool_t HF_SearchTable(char *filename, int *ret_fd)
 {
@@ -34,7 +34,7 @@ bool_t HF_SearchTable(char *filename, int *ret_fd)
 	
 	for (i = 0; i < MAXOPENFILES; i++) {
 		if (hf_table[i].valid == 1 &&
-		    !strncmp(filename, &hf_table[i].fname, strlen(filename))) {
+		    strncmp(filename, hf_table[i].fname, strlen(filename)) == 0) {
 			*ret_fd = i;
 			return TRUE;
 		}
@@ -45,8 +45,8 @@ bool_t HF_SearchTable(char *filename, int *ret_fd)
 
 void HF_Init(void)
 {
-	hf_table = calloc(MAXOPENFILES, sizeof(struct hf_table_entry));
-	hf_scan_table = calloc(MAXOPENFILES, sizeof(struct hf_scan_entry));
+	hf_table = calloc(MAXOPENFILES, sizeof(struct _hf_table_entry));
+	hf_scan_table = calloc(MAXOPENFILES, sizeof(struct _hf_scan_entry));
 	PF_Init();
 }
 
@@ -55,17 +55,17 @@ int HF_CreateFile(char *fileName, int recSize)
 	int pf_fd = -1;
 	int alloc_page_num = -1;
 	char *buf;
-	struct HFHeader header;
+	struct _HFHeader header;
 
 	/* If the file is already exist then the PF_CreateFile will return error */
 	/* PF Header will be stored into the created file */
-	if (PF_CreateFile(filename) != PFE_OK) {
+	if (PF_CreateFile(fileName) != PFE_OK) {
 		printf("HF_CreateFile: PF_CreateFile return error\n");
 		return HFE_PF_CREATE;
 	}
 
 	/* We can allocate a new page as header page by pf layer */
-	if ((pf_fd = PF_OpenFile(filename)) < 0) {
+	if ((pf_fd = PF_OpenFile(fileName)) < 0) {
 		printf("HF_CreateFile: PF_OpenFile return error\n");
 		return HFE_PF_OPEN;
 	}
@@ -123,9 +123,9 @@ int HF_OpenFile(char *fileName)
 {
 	int pf_fd = -1;
 	int hf_fd = -1;
-	struct hf_table_entry *alloc_entry = NULL;
+	struct _hf_table_entry *alloc_entry = NULL;
 
-	if ((pf_fd = PF_OpenFile(filename)) < 0) {
+	if ((pf_fd = PF_OpenFile(fileName)) < 0) {
 		printf("HF_OpenFile: PF_OpenFile return error\n");
 		return HFE_PF_OPEN;
 	}
@@ -136,7 +136,7 @@ int HF_OpenFile(char *fileName)
 		if (hf_table[hf_fd].valid == 0) {
 			alloc_entry = &(hf_table[hf_fd]);
 		
-		} else if (strncmp(&hf_table[hf_fd].fname, fileName, strlen(fileName)) == 0) {
+		} else if (strncmp(hf_table[hf_fd].fname, fileName, strlen(fileName)) == 0) {
 		
 			/* Already the file is opened in HF layer */
 			/* TODO: What if the function open the opened file again? */
@@ -155,7 +155,7 @@ int HF_OpenFile(char *fileName)
 	/* Initialize the table entry data */
 	alloc_entry->valid = 1;
 	alloc_entry->scan_active = 0;
-	strncpy(&alloc_entry->fname, fileName, strlen(fileName));
+	strncpy(alloc_entry->fname, fileName, strlen(fileName));
 	alloc_entry->pf_fd = pf_fd;
 	if (HF_HeaderRead(&alloc_entry->header, pf_fd) != HFE_OK) {
 		printf("HF OpenFile: Fail to read header info from file\n");
@@ -189,11 +189,11 @@ int HF_CloseFile(int HFfd)
 
 RECID HF_InsertRec(int HFfd, char *record)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	char *pagebuf;
 	int pagenum = 0;
 	int idx_bitmap = 0;
-	struct page_format format;
+	struct _page_format format;
 	RECID record_id;
 
 	/* 1. Checking whether that we have free page */
@@ -211,7 +211,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 			return HFE_ALLOC_PAGE;
 		}
 		
-		(table_entry->nr_pages)++;
+		(table_entry->header.nr_pages)++;
 		HF_InitList(pagebuf);
 	}
 
@@ -269,9 +269,9 @@ RECID HF_InsertRec(int HFfd, char *record)
 
 int HF_DeleteRec(int HFfd, RECID recId)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	char *pagebuf;
-	struct page_format format;
+	struct _page_format format;
 
 	if (table_entry->valid == 0) {
 		printf("HF_DeleteRec: Wrong HFfd value\n");
@@ -288,7 +288,7 @@ int HF_DeleteRec(int HFfd, RECID recId)
 
 	bitmap_clear(format.bitmap, BITMAP_SIZE, recId.recnum);
 	(format.nr_rec)--;
-	HF_WritePageFormat(&format, pagebur);
+	HF_WritePageFormat(&format, pagebuf);
 
 	if (format.nr_rec + 1 == table_entry->header.nr_rec) {
 		HF_DeletePageList(table_entry, &format,
@@ -302,12 +302,12 @@ int HF_DeleteRec(int HFfd, RECID recId)
 
 RECID HF_GetFirstRec(int HFfd, char *record)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	int nr_pages = table_entry->header.nr_pages;
 	int i = 0, j = 0;
 	int pagenum;
 	char *pagebuf;
-	struct page_format format;
+	struct _page_format format;
 	int find = 0;
 	RECID rec_id;
 
@@ -320,7 +320,7 @@ RECID HF_GetFirstRec(int HFfd, char *record)
 		PF_GetThisPage(table_entry->pf_fd, pagenum, &pagebuf);
 		HF_ReadPageFormat(&format, pagebuf);
 
-		for (j = 0; j < table_entry->nr_rec; j++) {
+		for (j = 0; j < table_entry->header.nr_rec; j++) {
 			if (bitmap_get(format.bitmap, BITMAP_SIZE, j)) {
 				find = 1;
 				break;
@@ -342,13 +342,13 @@ RECID HF_GetFirstRec(int HFfd, char *record)
 
 RECID HF_GetNextRec(int HFfd, RECID recId, char *record)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	int ret = 0;
 	int i = 0, j = 0;
 	int nr_pages = table_entry->header.nr_pages;
 	int pagenum = 0;
 	char *pagebuf;
-	struct page_format format;
+	struct _page_format format;
 	int find = 0;
 	RECID rec_id;
 
@@ -367,7 +367,7 @@ RECID HF_GetNextRec(int HFfd, RECID recId, char *record)
 		PF_GetThisPage(table_entry->pf_fd, pagenum, &pagebuf);
 		HF_ReadPageFormat(&format, pagebuf);
 		
-		for (j = recId.recnum + 1; j < table_entry->nr_rec; j++) {
+		for (j = recId.recnum + 1; j < table_entry->header.nr_rec; j++) {
 			if (bitmap_get(format.bitmap, BITMAP_SIZE, j)) {
 				find = 1;
 				break;
@@ -390,9 +390,9 @@ RECID HF_GetNextRec(int HFfd, RECID recId, char *record)
 
 int HF_GetThisRec(int HFfd, RECID recId, char *record)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	char *pagebuf;
-	struct page_format format;
+	struct _page_format format;
 	int ret = 0;
 	int pagenum = recId.pagenum + HF_DATA_PAGE_OFFSET;
 
@@ -426,8 +426,8 @@ int HF_GetThisRec(int HFfd, RECID recId, char *record)
 int HF_OpenFileScan(int HFfd, char attrType, int attrLength,
 		    int attrOffset, int op, char *value)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
-	struct hf_scan_entry *scan_entry;
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_scan_entry *scan_entry;
 	int scan_idx = 0;
 
 	if (!table_entry->valid) {
@@ -435,7 +435,7 @@ int HF_OpenFileScan(int HFfd, char attrType, int attrLength,
 		return HFE_FD;
 	}
 
-	for (scan_idx = 0; i < MAXOPENFILES; i++) {
+	for (scan_idx = 0; scan_idx < MAXOPENFILES; scan_idx++) {
 		if (!hf_scan_table[scan_idx].valid) {
 			break;
 		}
@@ -447,32 +447,32 @@ int HF_OpenFileScan(int HFfd, char attrType, int attrLength,
 	}
 
 	scan_entry = &hf_scan_table[scan_idx];
-	scan_entry.valid = 1;
-	scan_entry.hf_fd = HFfd;
-	scan_entry.attrType = attrType;
-	scan_entry.attrLength = attrLength;
-	scan_entry.attrOffset = attrOffset;
-	scan_entry.op = op;
+	scan_entry->valid = 1;
+	scan_entry->hf_fd = HFfd;
+	scan_entry->attrType = attrType;
+	scan_entry->attrLength = attrLength;
+	scan_entry->attrOffset = attrOffset;
+	scan_entry->op = op;
 
 	table_entry->scan_active = 1;
 
 	if (value == NULL) {
-		scan_entry.value = NULL;
-		scan_entry.op = ALL_OP;
+		scan_entry->value = NULL;
+		scan_entry->op = ALL_OP;
 	} else {
-		scan_entry.value = malloc(attrLength);
-		memcpy(scan_entry.value, value, attrLengh);
+		scan_entry->value = malloc(attrLength);
+		memcpy(scan_entry->value, value, attrLength);
 	}
 	
-	scan_entry.rec_id.pagenum = -1;
-	scan_entry.rec_id.recnum  = -1;
+	scan_entry->rec_id.pagenum = -1;
+	scan_entry->rec_id.recnum  = -1;
 
 	return scan_idx;
 }
 
 RECID HF_FindNextRec(int scanDesc, char *record)
 {
-	struct hf_scan_entry *scan_entry = &hf_scan_table[scanDesc];
+	struct _hf_scan_entry *scan_entry = &hf_scan_table[scanDesc];
 	RECID rec_id;
 	
 	if (!scan_entry->valid) {
@@ -497,7 +497,7 @@ RECID HF_FindNextRec(int scanDesc, char *record)
 			if (HF_CheckCondition(rec_id, record, scan_entry)) {
 				break;
 			}
-			rec_id = HF_GetNextRec(scan_entry->hf_fd, scan_entry->rec_id, recrod);
+			rec_id = HF_GetNextRec(scan_entry->hf_fd, scan_entry->rec_id, record);
 
 		} while (rec_id != HFE_EOF);
 	}
@@ -515,18 +515,18 @@ int HF_CloseFileScan(int scanDesc)
 {
 	hf_table[hf_scan_table[scanDesc].hf_fd].scan_active = 0;
 	free(hf_scan_table[scanDesc].value);
-	memset(&hf_scan_table[scanDesc], 0, sizeof(struct hf_scan_entry));
+	memset(&hf_scan_table[scanDesc], 0, sizeof(struct _hf_scan_entry));
 	return HFE_OK;
 }
 
 bool_t HF_ValidRecId(int HFfd, RECID recid)
 {
-	struct hf_table_entry *table_entry = &hf_table[HFfd];
+	struct _hf_table_entry *table_entry = &hf_table[HFfd];
 	return (recid.pagenum < table_entry->header.nr_pages) &&
 			(recid.recnum < table_entry->header.nr_rec) ? TRUE : FALSE;
 }
 
-int HF_CheckCondition(RECID rec_id, char *record, struct hf_scan_entry *scan_entry)
+int HF_CheckCondition(RECID rec_id, char *record, struct _hf_scan_entry *scan_entry)
 {
 	record += scan_entry->attrOffset;
 	switch (scan_entry->attrType) {
@@ -588,12 +588,12 @@ int HF_CheckCondition(RECID rec_id, char *record, struct hf_scan_entry *scan_ent
 }
 
 
-int HF_DeletePageList(struct hf_table_entry *table_entry, 
-		      struct page_format *format,
+int HF_DeletePageList(struct _hf_table_entry *table_entry, 
+		      struct _page_format *format,
 		      int pagenum, int is_free_page_list)
 {
-	int *list = is_free_page_list ? &(table_entry->free_page_list) :
-					&(table_entry->full_page_list) ;
+	int *list = is_free_page_list ? &(table_entry->header.free_page_list) :
+					&(table_entry->header.full_page_list) ;
 	int candidate = pagenum;
 
 	/* Checking whethere that I'm the only one in list */
@@ -602,7 +602,7 @@ int HF_DeletePageList(struct hf_table_entry *table_entry,
 	} else {
 		/* Do normal list delete */	
 		char *prev_pagebuf, *next_pagebuf;
-		struct page_format prev_format, next_format;
+		struct _page_format prev_format, next_format;
 
 		PF_GetThisPage(table_entry->pf_fd, format->prev, &prev_pagebuf);
 		PF_GetThisPage(table_entry->pf_fd, format->next, &next_pagebuf);
@@ -626,12 +626,12 @@ int HF_DeletePageList(struct hf_table_entry *table_entry,
 	return 0;
 }
 
-int HF_InsertPageList(struct hf_table_entry *table_entry, 
-		      struct page_format *format,
+int HF_InsertPageList(struct _hf_table_entry *table_entry, 
+		      struct _page_format *format,
 		      int pagenum, int is_free_page_list)
 {
-	int *list = is_free_page_list ? &(table_entry->free_page_list) :
-					&(table_entry->full_page_list) ;
+	int *list = is_free_page_list ? &(table_entry->header.free_page_list) :
+					&(table_entry->header.full_page_list) ;
 	
 	/* Checking whethere that there is no entry in list */
 	if (*list == HF_HEADER_PAGE_NUM) {
@@ -643,21 +643,21 @@ int HF_InsertPageList(struct hf_table_entry *table_entry,
 
 	} else {
 		char *next_pagebuf, *pagebuf, *prev_pagebuf;
-		struct next_format, prev_format;
+		struct _page_format next_format, prev_format;
 
 		PF_GetThisPage(table_entry->pf_fd, *list, &prev_pagebuf);
 		HF_ReadPageFormat(&prev_format, prev_pagebuf);
 
-		PF_GetThisPage(table_entry->pf_fd, prev_format->next, &next_pagebuf);
+		PF_GetThisPage(table_entry->pf_fd, prev_format.next, &next_pagebuf);
 		HF_ReadPageFormat(&next_format, next_pagebuf);
 
 		PF_GetThisPage(table_entry->pf_fd, pagenum, &pagebuf);
 
-		format->next = prev_format->next;
+		format->next = prev_format.next;
 		format->prev = *list;
 
-		prev_format->next = pagenum;
-		next_format->prev = pagenum;
+		prev_format.next = pagenum;
+		next_format.prev = pagenum;
 
 		HF_WritePageFormat(format, pagebuf);
 		HF_WritePageFormat(&prev_format, prev_pagebuf);
@@ -667,7 +667,7 @@ int HF_InsertPageList(struct hf_table_entry *table_entry,
 	return 0;
 }
 
-int HF_ReadPageFormat(struct page_format *format, char *pagebuf)
+int HF_ReadPageFormat(struct _page_format *format, char *pagebuf)
 {
 	memcpy(format, pagebuf + PAGE_FORMAT_OFFSET, sizeof(int) * 3);
 	format->bitmap = pagebuf + PAGE_FORMAT_BITMAP_OFFSET;
@@ -675,7 +675,7 @@ int HF_ReadPageFormat(struct page_format *format, char *pagebuf)
 	return 0;
 }
 
-int HF_WritePageFormat(struct page_format *format, char *pagebuf)
+int HF_WritePageFormat(struct _page_format *format, char *pagebuf)
 {
 	memcpy(pagebuf, format, sizeof(int) * 3);
 /*	memcpy(pagebuf + PAGE_FORMAT_BITMAP_OFFSET, 
@@ -686,14 +686,14 @@ int HF_WritePageFormat(struct page_format *format, char *pagebuf)
 
 int HF_InitList(char *pagebuf)
 {
-	struct page_format init_format;
+	struct _page_format init_format;
 	init_format.next = init_format.prev = 1;
 	memcpy(pagebuf + PAGE_FORMAT_OFFSET, &init_format, sizeof(int) * 2);
 
 	return 0;
 }
 
-int HF_HeaderRead(struct HFHeader *header, int pf_fd)
+int HF_HeaderRead(struct _HFHeader *header, int pf_fd)
 {
 	char *buf;
 	
@@ -709,12 +709,12 @@ int HF_HeaderRead(struct HFHeader *header, int pf_fd)
 	}
 
 	/* 2. Read the header data on buffer */
-	memcpy(header, buf, sizeof(struct HFHeader));
+	memcpy(header, buf, sizeof(struct _HFHeader));
 
 	return HFE_OK;
 }
 
-int HF_HeaderWrite(struct HFHeader *header, int pf_fd)
+int HF_HeaderWrite(struct _HFHeader *header, int pf_fd)
 {
 	char *buf;
 	
@@ -730,7 +730,7 @@ int HF_HeaderWrite(struct HFHeader *header, int pf_fd)
 	}
 
 	/* 2. Write the header data into buffer */
-	memcpy(buf, header, sizeof(struct HFHeader));
+	memcpy(buf, header, sizeof(struct _HFHeader));
 
 	/* 3. Make the page dirty */
 	if (PF_DirtyPage(pf_fd, HF_HEADER_PAGE_NUM) != PFE_OK) {
@@ -740,4 +740,3 @@ int HF_HeaderWrite(struct HFHeader *header, int pf_fd)
 
 	return HFE_OK;
 }
-

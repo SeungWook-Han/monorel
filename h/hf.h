@@ -7,6 +7,60 @@
  * hf.h: external interface definition for the HF layer 
  ****************************************************************************/
 
+#define PAGE_FORMAT_SIZE 524
+#define PAGE_FORMAT_OFFSET (PAGE_SIZE - PAGE_FORMAT_SIZE)
+#define PAGE_FORMAT_BITMAP_OFFSET (PAGE_FORMAT_OFFSET + sizeof(int) * 3)
+
+#define BITMAP_SIZE 4096	/* Granularity bit */
+
+
+/* [Data Structure]
+ * How header page format should be set?
+ * Header page should be allocated for each file. (i.e. Files have each own header page)
+ *
+ * |-----------------------------------------|
+ *    nr_pages  |  rec_size    ...
+ *     (4KB)    |   (4KB)     ...
+ *   [pf layer] | [hf layer]  ...
+ * |-----------------------------------------|
+ */
+
+typedef struct _HFHeader {
+	int rec_size;           /* Record size */
+	int nr_rec;             /* Number of records per page */
+	int nr_pages;           /* Number of data pages in file */
+	/*int nr_free_pages;*/	/* Number of free pages in the file */ 
+	int free_page_list;	/**/
+	int full_page_list;	/**/
+	
+} HFHeader;
+
+typedef struct _hf_table_entry {
+	int valid;
+	int scan_active;
+	char fname[STR_SIZE];
+	int pf_fd;
+	struct _HFHeader header;
+} hf_table_entry;
+
+typedef struct _page_format {
+	int next;		/* (4) Next page number in list */
+	int prev;		/* (4) Previous page number in list */
+	int nr_rec;		/* (4) Number of stored record */
+	char *bitmap;		/* (512) */
+} page_format;
+
+typedef struct _hf_scan_entry {
+	int valid;
+	int hf_fd;
+	char attrType;
+	int attrLength;
+	int attrOffset;
+	int op;
+	char *value;
+	RECID rec_id;
+} hf_scan_entry;
+
 /*
  * prototypes for HF-layer functions
  */
@@ -28,18 +82,18 @@ void		HF_PrintError(char *errString);
 bool_t          HF_ValidRecId(int fileDesc, RECID recid);
 /*int             HF_HeaderInfo(int fileDesc, HFHeader *FileInfo);*/
 
-int		HF_HeaderRead(struct HFHeader *header, int pf_fd);
-int		HF_HeaderWrite(struct HFHeader *header, int pf_fd);
-int		HF_ReadPageFormat(struct page_format *format, char *pagebuf);
-int 		HF_WritePageFormat(struct page_format *format, char *pagebuf);
+int		HF_HeaderRead(struct _HFHeader *header, int pf_fd);
+int		HF_HeaderWrite(struct _HFHeader *header, int pf_fd);
+int		HF_ReadPageFormat(struct _page_format *format, char *pagebuf);
+int 		HF_WritePageFormat(struct _page_format *format, char *pagebuf);
 int 		HF_InitList(char *pagebuf);
 
-int 		HF_DeletePageList(struct hf_table_entry *table_entry, 
-		      	 	  struct page_format *format,
+int 		HF_DeletePageList(struct _hf_table_entry *table_entry, 
+		      	 	  struct _page_format *format,
 		      		  int pagenum, int is_free_page_list);
 
-int 		HF_InsertPageList(struct hf_table_entry *table_entry, 
-		      		  struct page_format *format,
+int 		HF_InsertPageList(struct _hf_table_entry *table_entry, 
+		      		  struct _page_format *format,
 		      		  int pagenum, int is_free_page_list);
 
 
@@ -87,84 +141,6 @@ int 		HF_InsertPageList(struct hf_table_entry *table_entry,
 #define HFE_PF_CLOSE		-30 /* Failed to close file by pf */
 #define HFE_PF_UNPIN		-31 
 #define HFE_HEADER_READ		-32 /* Failed to read header info */
-
-
-/******************************************************************************/
-/*	Data structure definition		  			      */
-/******************************************************************************/
-/* Data structure for HF header info */
-/* Use this structure only as a reference. You'd better have your own
-   design of HF header structure.  Bongki Moon, Feb/26/2017.
-*/
-#ifdef ONLY_FOR_REFERENCE
-#define PAGENUM unsigned short int
-#define RECNUM  unsigned short int
-
-typedef struct {
-    int RecSize;                 /* Record size */
-    int RecPage;                 /* Number of records per page */
-    int NumPg;                   /* Number of pages in file */
-    int NumFrPgFile;             /* Number of free pages in the file */ 
-} HFHeader;
-#else
-
-/*
- * How header page format should be set?
- * Header page should be allocated for each file. (i.e. Files have each own header page)
- *
- * |-----------------------------------------|
- *    nr_pages  |  rec_size    ...
- *     (4KB)    |   (4KB)     ...
- *   [pf layer] | [hf layer]  ...
- * |-----------------------------------------|
- */
-
-typedef struct {
-	int rec_size;           /* Record size */
-	int nr_rec;             /* Number of records per page */
-	int nr_pages;           /* Number of data pages in file */
-	/*int nr_free_pages;*/	/* Number of free pages in the file */ 
-	int free_page_list;	/**/
-	int full_page_list;	/**/
-	
-} HFHeader;
-
-typedef struct {
-	int valid;
-	int scan_active;
-	char fname[STR_SIZE];
-	int pf_fd;
-	struct HFHeader header;
-} hf_table_entry;
-
-
-#define PAGE_FORMAT_SIZE 524
-#define PAGE_FORMAT_OFFSET (PAGE_SIZE - PAGE_FORMAT_SIZE)
-#define PAGE_FORMAT_BITMAP_OFFSET (PAGE_FORMAT_OFFSET + sizeof(int) * 3)
-
-#define BITMAP_SIZE 4096	/* Granularity bit */
-
-typedef struct {
-	int next;		/* (4) Next page number in list */
-	int prev;		/* (4) Previous page number in list */
-	int nr_rec;		/* (4) Number of stored record */
-	char *bitmap;		/* (512) */
-} page_format;
-
-typedef struct {
-	int valid;
-	int hf_fd;
-	char attrType;
-	int attrLength;
-	int attrOffset;
-	int op;
-	char *value;
-	RECID rec_id;
-} hf_scan_entry;
-
-
-#endif
-/* End of ONLY_FOR_REFERENCE */
 
 /******************************************************************************/
 /* The current HF layer error code or HFE_OK if function returned without one */
