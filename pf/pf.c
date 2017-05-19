@@ -180,17 +180,19 @@ int  PF_CloseFile(int fd)
 	int numpages;
 
 	if (elem->valid == FALSE || elem->inode != fd) {
+		printf("PF_CloseFile: elem state is wrong\n");
 		return PFE_CLOSE;
 	}
 
 	bq.fd = elem->inode;
 	bq.unixfd = elem->unixfd;
 	numpages = elem->hdr.numpages;
-
+	
 	if (BF_FlushBuf(elem->inode) != BFE_OK) {
+		printf("PF_CloseFile: BF_FlushBuf return error\n");
 		return PFE_CLOSE;
 	}
-
+	
 	if (elem->hdrchanged == TRUE) {
 	/*
 		struct PFpage page;
@@ -205,6 +207,7 @@ int  PF_CloseFile(int fd)
 	*/
 		if (pwrite(elem->unixfd, &(elem->hdr.numpages), 
 					sizeof(int), 0) != sizeof(int)) {
+			printf("PF_CloseFile: file io error\n");
 			return PFE_FILEIO;
 		}
 
@@ -259,6 +262,9 @@ int PF_GetThisPage(int fd, int pagenum, char **pagebuf)
 		return PFE_GETTHIS;
 
 	if (pagenum >= elem->hdr.numpages) {
+	/*	printf("PF_GetThisPage: numpages : %d\n", elem->hdr.numpages); */
+	/*	printf("PF_GetThisPage: pagenum  : %d\n", pagenum);		*/
+		
 		return PFE_INVALIDPAGE;
 	}
 

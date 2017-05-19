@@ -365,7 +365,6 @@ int BF_AllocBuf(BFreq bq, PFpage **fpage)
 	if (lru_insert(free_page)) return 1;
 	if (hash_insert(free_page)) return 1;
 
-
 	return BFE_OK;
 }
 
@@ -380,6 +379,7 @@ int BF_UnpinBuf(BFreq bq)
 		page = hash_elem->bpage;
 		if (page->count != 0) page->count--;
 	}
+	
 	return BFE_OK;
 }
 
@@ -410,8 +410,11 @@ int BF_FlushBuf(int fd)
 	     !IS_LRU_TAIL(page);
 	     page  = page->next_page) {
 		
-		if (page->fd == fd && page->count != 0)
+		if (page->fd == fd && page->count != 0) {
+			printf("pin count : %d\n", page->count);
+			BF_ShowBuf();	
 			return BFE_PAGEFIXED;
+		}
 	}
 
 	/* Duplicating theh code over for avoiding roll-back. */

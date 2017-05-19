@@ -77,6 +77,7 @@ void hftest1()
   i = 0;
   while (HF_ValidRecId(fd,next_recid))
   {
+    printf("record %d %d\n", next_recid.pagenum, next_recid.recnum);
     /* delete record if 'i' is odd numbered */
     if ((i % 2) != 0) 
     {
@@ -96,7 +97,9 @@ void hftest1()
     exit(1);
   }
 
+  printf("begin of read_string\n");
   read_string_recs(FILE1);
+  printf("end of read_string\n");
 }
 
 
@@ -314,7 +317,6 @@ void hftest3()
   /* to 'value' will be returned by the scan.             */
 
   value = 50.0;
-
   if ((sd = HF_OpenFileScan(fd,REAL_TYPE,sizeof(float),offsetof(struct rec_struct, 
 float_val),GE_OP,(char *)&value)) <0)
   {
@@ -323,7 +325,6 @@ float_val),GE_OP,(char *)&value)) <0)
   }
 
   /* Getting the values from the scan */
-
   recid = HF_FindNextRec(sd,(char *)&record);
 
   printf("<< Scan records whose floating value >= 50 >>\n");

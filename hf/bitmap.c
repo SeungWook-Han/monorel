@@ -1,3 +1,4 @@
+#include <stdio.h>
 
 #define CHUNK_SIZE 32	/* How much length will be a single chunk in bitmap */
 
@@ -58,4 +59,14 @@ int bitmap_get(int *bitmap, int bitmap_size, int digit)
 
 	bitmap += chunk;
 	return ((*bitmap) & (1 << rest)) == 0 ? 0 : 1;
+}
+
+int bitmap_print(int *bitmap, int bitmap_size)
+{
+	int i = 0;
+	for (i = 0; i < bitmap_size; i++) {
+		printf("%d", bitmap_get(bitmap, bitmap_size, i));
+	}
+	printf("\n");
+	return 0;
 }

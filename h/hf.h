@@ -86,13 +86,13 @@ int		HF_HeaderRead(struct _HFHeader *header, int pf_fd);
 int		HF_HeaderWrite(struct _HFHeader *header, int pf_fd);
 int		HF_ReadPageFormat(struct _page_format *format, char *pagebuf);
 int 		HF_WritePageFormat(struct _page_format *format, char *pagebuf);
-int 		HF_InitList(char *pagebuf);
+int 		HF_InitList(char *pagebuf, int my_pagenum);
 
-int 		HF_DeletePageList(struct _hf_table_entry *table_entry, 
+int 		_HF_DeletePageList(struct _hf_table_entry *table_entry, 
 		      	 	  struct _page_format *format,
 		      		  int pagenum, int is_free_page_list);
 
-int 		HF_InsertPageList(struct _hf_table_entry *table_entry, 
+int 		_HF_InsertPageList(struct _hf_table_entry *table_entry, 
 		      		  struct _page_format *format,
 		      		  int pagenum, int is_free_page_list);
 
@@ -141,6 +141,7 @@ int 		HF_InsertPageList(struct _hf_table_entry *table_entry,
 #define HFE_PF_CLOSE		-30 /* Failed to close file by pf */
 #define HFE_PF_UNPIN		-31 
 #define HFE_HEADER_READ		-32 /* Failed to read header info */
+#define HFE_UNPIN		-33
 
 /******************************************************************************/
 /* The current HF layer error code or HFE_OK if function returned without one */
