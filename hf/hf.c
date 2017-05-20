@@ -115,7 +115,7 @@ int HF_CreateFile(char *fileName, int recSize)
 		return HFE_PF_CLOSE;
 	}
 
-	printf("nr_record in page : %d\n", header.nr_rec);
+	/* printf("nr_record in page : %d\n", header.nr_rec); */
 
 	return HFE_OK;
 }
@@ -173,7 +173,8 @@ int HF_OpenFile(char *fileName)
 		printf("HF OpenFile: Fail to read header info from file\n");
 		return HFE_HEADER_READ;
 	}
-	printf("nr_pages: %d\n", alloc_entry->header.nr_pages);
+
+	/* printf("nr_pages: %d\n", alloc_entry->header.nr_pages); */
 
 	return hf_fd;
 }
@@ -195,7 +196,8 @@ int HF_CloseFile(int HFfd)
 		printf("HF_CloseFile: scan is still active\n");
 		return HFE_SCANOPEN;
 	}
-	printf("close nr_pages: %d\n", hf_table[HFfd].header.nr_pages);
+
+	/* printf("close nr_pages: %d\n", hf_table[HFfd].header.nr_pages); */
 	hf_table[HFfd].valid = 0;
 	return HFE_OK;
 }
@@ -226,7 +228,9 @@ RECID HF_InsertRec(int HFfd, char *record)
 			return record_id;
 		}
 		
+		/*
 		printf("allocating new data page %d\n", table_entry->header.free_page_list);
+		*/
 		table_entry->header.nr_pages = table_entry->header.nr_pages + 1;
 		HF_InitList(pagebuf, table_entry->header.free_page_list);
 		PF_UnpinPage(table_entry->pf_fd, table_entry->header.free_page_list, 1);
@@ -711,6 +715,7 @@ int _HF_DeletePageList(struct _hf_table_entry *table_entry,
 		HF_ReadPageFormat(&next_format, next_pagebuf);
 		HF_ReadPageFormat(format, pagebuf);
 
+	/*
 		printf("DeletePageList: prev %d\n", format->prev);
 		printf("DeletePageLIst: next %d\n", format->next);
 		printf("DeletePageList: curr %d\n", pagenum);
@@ -718,7 +723,7 @@ int _HF_DeletePageList(struct _hf_table_entry *table_entry,
 		printf("DeletePageList: prev next %d\n", prev_format.next);
 		printf("DeletePageLIst: next prev %d\n", next_format.prev);
 		printf("DeletePageList: next next %d\n", next_format.next);
-
+	*/
 		if (*list == pagenum) {
 			if (format->next != pagenum) {
 				*list = format->next;
