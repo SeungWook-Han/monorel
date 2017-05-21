@@ -96,7 +96,9 @@ void hftest1()
     exit(1);
   }
 
+  printf("begin of read_string\n");
   read_string_recs(FILE1);
+  printf("end of read_string\n");
 }
 
 
@@ -314,7 +316,6 @@ void hftest3()
   /* to 'value' will be returned by the scan.             */
 
   value = 50.0;
-
   if ((sd = HF_OpenFileScan(fd,REAL_TYPE,sizeof(float),offsetof(struct rec_struct, 
 float_val),GE_OP,(char *)&value)) <0)
   {
@@ -323,7 +324,6 @@ float_val),GE_OP,(char *)&value)) <0)
   }
 
   /* Getting the values from the scan */
-
   recid = HF_FindNextRec(sd,(char *)&record);
 
   printf("<< Scan records whose floating value >= 50 >>\n");
@@ -338,7 +338,7 @@ float_val),GE_OP,(char *)&value)) <0)
 
      recid = HF_FindNextRec(sd,(char *)&record);
   }
-  
+
   /* Testing HF_GetThisRec() function */
   if (HF_GetThisRec(fd, saved_recid, (char *)&record) != HFE_OK) {
      HF_PrintError("Problem getting a record\n.");

@@ -123,6 +123,12 @@ int HF_CreateFile(char *fileName, int recSize)
 int HF_DestroyFile(char *fileName)
 {
 	/* TODO: We need to check whethere the file was closed here ?*/
+	int ret_fd;
+	if (HF_SearchTable(fileName, &ret_fd)) {
+		printf("HF_DestroyFile: Try to destroying the un-closed file\n");
+		return HFE_FILE_DESTROY;
+	}
+
 	if (PF_DestroyFile(fileName) != PFE_OK) {
 		return HFE_FILE_DESTROY;
 	}
@@ -214,6 +220,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 	/* 1. Checking whether that we have free page */
 	if (table_entry->valid == 0) {
 		printf("HF_InsertRec: Wrong HFfd value\n");
+		record_id.recnum = table_entry->header.nr_rec;
 		HFerrno = HFE_FD;
 		return record_id;
 	}
@@ -224,6 +231,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 				 &(table_entry->header.free_page_list), 
 			 	 &pagebuf) != PFE_OK) {
 			printf("HF_InsertRec: Failed to allocate new page\n");
+			record_id.recnum = table_entry->header.nr_rec;
 			HFerrno = HFE_ALLOC_PAGE;
 			return record_id;
 		}
@@ -243,6 +251,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 			   table_entry->header.free_page_list, 
 			   &pagebuf) != PFE_OK) {
 		printf("HF_InsertRec: PF_GetThisPage error\n");
+		record_id.recnum = table_entry->header.nr_rec;
 		HFerrno = HFE_GET_THIS_PAGE;
 		return record_id;
 	}
@@ -254,6 +263,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 		printf("HF_InsertRec: Inconsistency in free page list and nr_rec\n");
 		/* Un-pinning */
 		PF_UnpinPage(table_entry->pf_fd, table_entry->header.free_page_list, 0);
+		record_id.recnum = table_entry->header.nr_rec;
 		HFerrno = -1;
 		return record_id;
 	}
@@ -269,6 +279,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 		printf("HF_InsertRec: Inconsisteny in bitmap and nr_rec\n");
 		/* Un-pinning */
 		PF_UnpinPage(table_entry->pf_fd, table_entry->header.free_page_list, 0);
+		record_id.recnum = table_entry->header.nr_rec;
 		HFerrno = -1;
 		return record_id;
 	}
@@ -286,7 +297,7 @@ RECID HF_InsertRec(int HFfd, char *record)
 	
 	/* 5. Checking whether the page have free space */
 	if (format.nr_rec == table_entry->header.nr_rec) {
-		printf("Page Migration: free to full %d\n", phy_pagenum);
+		/* printf("Page Migration: free to full %d\n", phy_pagenum); */
 		_HF_DeletePageList(table_entry, &format, 
 				  phy_pagenum, HF_FREE_PAGE_LIST);
 		_HF_InsertPageList(table_entry, &format,
@@ -327,7 +338,7 @@ int HF_DeleteRec(int HFfd, RECID recId)
 	HF_WritePageFormat(&format, pagebuf);
 
 	if (format.nr_rec + 1 == table_entry->header.nr_rec) {
-		printf("Page Migration: full to free %d\n", phy_pagenum);
+		/* printf("Page Migration: full to free %d\n", phy_pagenum); */
 		_HF_DeletePageList(table_entry, &format,
 				  phy_pagenum, HF_FULL_PAGE_LIST);
 		_HF_InsertPageList(table_entry, &format,
@@ -352,6 +363,7 @@ RECID HF_GetFirstRec(int HFfd, char *record)
 
 	if (nr_pages == 0) {
 		HFerrno = HFE_EOF;
+		rec_id.recnum = table_entry->header.nr_rec;
 		printf("HF_GetFirstRec: No pages in file\n");
 		return rec_id;
 	}
@@ -376,6 +388,7 @@ RECID HF_GetFirstRec(int HFfd, char *record)
 
 	if (find == 0) {
 		HFerrno = HFE_EOF;
+		rec_id.recnum = table_entry->header.nr_rec;
 		return rec_id;
 	}
 
@@ -405,6 +418,7 @@ RECID HF_GetNextRec(int HFfd, RECID recId, char *record)
 	if (!table_entry->valid) {
 		printf("HF_GetNextRec: Wrong HFfd value\n");
 		HFerrno = HFE_FD;
+		rec_id.recnum = table_entry->header.nr_rec;
 		return rec_id;
 	}
 /*
