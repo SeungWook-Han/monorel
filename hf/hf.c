@@ -619,10 +619,15 @@ RECID HF_FindNextRec(int scanDesc, char *record)
 
 int HF_CloseFileScan(int scanDesc)
 {
-	hf_table[hf_scan_table[scanDesc].hf_fd].scan_active = 0;
-	free(hf_scan_table[scanDesc].value);
-	memset(&hf_scan_table[scanDesc], 0, sizeof(struct _hf_scan_entry));
-	return HFE_OK;
+	if (hf_scan_table[scanDesc].valid == 1) {
+		hf_table[hf_scan_table[scanDesc].hf_fd].scan_active = 0;
+		free(hf_scan_table[scanDesc].value);
+		memset(&hf_scan_table[scanDesc], 0, sizeof(struct _hf_scan_entry));
+		return HFE_OK;
+	} else {
+		printf("HF_CloseFileSCan: Try to close un-opened scan\n");
+		return HFE_PF_CLOSE;
+	}
 }
 
 bool_t HF_ValidRecId(int HFfd, RECID recid)

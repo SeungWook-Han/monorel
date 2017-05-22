@@ -338,7 +338,7 @@ float_val),GE_OP,(char *)&value)) <0)
 
      recid = HF_FindNextRec(sd,(char *)&record);
   }
-  
+
   /* Testing HF_GetThisRec() function */
   if (HF_GetThisRec(fd, saved_recid, (char *)&record) != HFE_OK) {
      HF_PrintError("Problem getting a record\n.");
