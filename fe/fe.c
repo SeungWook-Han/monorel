@@ -73,22 +73,34 @@ void DBcreate(char *dbname)
 	/* Relation table (Attribute name will be omitted) */
 	attr_desc_list = calloc(RELCAT_NATTRS, sizeof(ATTR_DESCR));
 	attr_desc_list[0].attrType = STRING_TYPE; attr_desc_list[0].attrLen = MAXNAME;
+	memcpy(attr_desc_list[0].attrName, "relname", MAXNAME);
 	attr_desc_list[1].attrType = INT_TYPE;    attr_desc_list[1].attrLen = sizeof(int);
+	memcpy(attr_desc_list[1].attrName, "relwid", MAXNAME);
 	attr_desc_list[2].attrTYpe = INT_TYPE;    attr_desc_list[2].attrLen = sizeof(int);
+	memcpy(attr_desc_list[2].attrName, "attrcnt", MAXNAME);
 	attr_desc_list[3].attrTYpe = INT_TYPE;    attr_desc_list[3].attrLen = sizeof(int);
+	memcpy(attr_desc_list[3].attrName, "indexcnt", MAXNAME);
 	attr_desc_list[4].attrType = STRING_TYPE; attr_desc_list[4].attrLen = MAXNAME;
+	memcpy(attr_desc_list[4].attrName, "primattr", MAXNAME);
 	_CreateTable(RELCATNAME, RELCAT_NATTRS, attr_desc_list, NULL);
 	free(attr_desc_list);
 	
 	/* Attribute table */
 	attr_desc_list = calloc(ATTRCAT_NATTRS, sizeof(ATTR_DESCR));
 	attr_desc_list[0].attrType = STRING_TYPE; attr_desc_list[0].attrLen = MAXNAME;
+	memcpy(attr_desc_list[0].attrName, "relname", MAXNAME);
 	attr_desc_list[1].attrType = STRING_TYPE; attr_desc_list[1].attrLen = MAXNAME;
+	memcpy(attr_desc_list[1].attrName, "attrname", MAXNAME);
 	attr_desc_list[2].attrType = INT_TYPE; 	  attr_desc_list[2].attrLen = sizeof(int);
+	memcpy(attr_desc_list[2].attrName, "offset", MAXNAME);
 	attr_desc_list[3].attrTYpe = INT_TYPE;    attr_desc_list[3].attrLen = sizeof(int);
+	memcpy(attr_desc_list[3].attrName, "attrlen", MAXNAME);
 	attr_desc_list[4].attrTYpe = INT_TYPE;    attr_desc_list[4].attrLen = sizeof(int);
+	memcpy(attr_desc_list[4].attrName, "attrtype", MAXNAME);
 	attr_desc_list[5].attrTYpe = INT_TYPE;    attr_desc_list[5].attrLen = sizeof(int);
+	memcpy(attr_desc_list[5].attrName, "indexed", MAXNAME);
 	attr_desc_list[6].attrTYpe = INT_TYPE;    attr_desc_list[6].attrLen = sizeof(int);
+	memcpy(attr_desc_list[6].attrName, "attrno", MAXNAME);
 	_CreateTable(ATTRCATNAME, ATTRCAT_NATTRS, attr_desc_list, NULL);
 	free(attr_desc_list);
 
@@ -178,7 +190,7 @@ int _CreateTable(char *relName,
 		exit(1);
 	}
 	for (i = 0; i < numAttrs; i++) {
-		memcpy(attr_desc.relname, relName, MAXNAME);
+		memcpy(attr_desc.relname, attrs[i].relname, MAXNAME);
 		memcpy(attr_desc.attrname, attrs[i].attrName, MAXNAME);
 		attr_desc.offset = offset;
 		offset += attrs[i].attrLen;
@@ -236,6 +248,9 @@ int GetRelDes(char *relName, struct _relation_desc *rel_desc)
 	}
 
 }
+
+
+//int ReadSchemaRelation(char *relName, 
 
 
 int PrintTable(char *relName)
