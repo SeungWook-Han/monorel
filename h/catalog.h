@@ -5,6 +5,8 @@
 #ifndef __CATALOG_H__
 #define __CATALOG_H__
 
+#include <stddef.h>		/* for offsetof(t,m) */
+
 /* catalog.h:  Everything you ever wanted to know about catalogs */ 
 
 /* Catalogs: externally defined global variables.                */
@@ -21,12 +23,12 @@ extern int relcatFd, attrcatFd;
 
 /* structures of relcat relation */
 
-typedef struct{
-    char relname[MAXNAME + 1];	/* relation name			*/
+typedef struct _relation_desc {
+    char relname[MAXNAME];	/* relation name			*/
     int  relwid;		/* tuple width (in bytes)		*/
     int  attrcnt;		/* number of attributes			*/
     int  indexcnt;		/* number of indexed attributes		*/
-    char primattr[MAXNAME + 1];	/* name of primary attribute		*/
+    char primattr[MAXNAME];	/* name of primary attribute		*/
 } RELDESCTYPE;
 
 #define RELDESCSIZE            sizeof(RELDESCTYPE)
@@ -36,9 +38,9 @@ typedef struct{
 
 /* structure of attrcat relation */
 
-typedef struct{
-    char relname[MAXNAME + 1];	/* relation name			*/
-    char attrname[MAXNAME + 1];	/* attribute name			*/
+typedef struct _attribute_desc {
+    char relname[MAXNAME];	/* relation name			*/
+    char attrname[MAXNAME];	/* attribute name			*/
     int  offset;		/* attribute offset in tuple		*/
     int  attrlen;		/* attribute length			*/
     int  attrtype;		/* attribute type			*/
