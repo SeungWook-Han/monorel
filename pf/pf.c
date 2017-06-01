@@ -188,13 +188,11 @@ int  PF_CloseFile(int fd)
 	bq.unixfd = elem->unixfd;
 	numpages = elem->hdr.numpages;
 	
-printf("PF_CloseFile Tag\n");
 	if (BF_FlushBuf(elem->inode) != BFE_OK) {
 		printf("PF_CloseFile: BF_FlushBuf return error\n");
 		return PFE_CLOSE;
 	}
 	
-printf("PF_CloseFile Tag\n");
 	if (elem->hdrchanged == TRUE) {
 	/*
 		struct PFpage page;
@@ -215,7 +213,6 @@ printf("PF_CloseFile Tag\n");
 
 	}
 	
-printf("PF_CloseFile Tag\n");
 	elem->valid = FALSE;
 	elem->hdrchanged = FALSE;
 	close(bq.unixfd);

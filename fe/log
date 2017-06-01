@@ -1,0 +1,177 @@
+cleanup done!
+hash_insert: 0x24f95e0
+fd: 19 page_num 1
+<LRU-list Printing...>
+fd             unix_fd        page_num       count          dirty          data           
+
+19             3              1              0              1              $              
+Total LRU-list Count : 1
+<Hash Table Printing...>
+<0> 19             1              
+<1> NULL
+<2> NULL
+<3> NULL
+<4> NULL
+<5> NULL
+<6> NULL
+<7> NULL
+<8> NULL
+<9> NULL
+<10> NULL
+<11> NULL
+<12> NULL
+<13> NULL
+<14> NULL
+<15> NULL
+<16> NULL
+<17> NULL
+<18> NULL
+<19> NULL
+hash_delete: 0x24f95e0
+fd: 19 page_num: 1
+hash_insert: 0x24f95e0
+fd: 19 page_num 1
+<LRU-list Printing...>
+fd             unix_fd        page_num       count          dirty          data           
+
+19             3              1              0              1              ,              
+Total LRU-list Count : 1
+<Hash Table Printing...>
+<0> 19             1              
+<1> NULL
+<2> NULL
+<3> NULL
+<4> NULL
+<5> NULL
+<6> NULL
+<7> NULL
+<8> NULL
+<9> NULL
+<10> NULL
+<11> NULL
+<12> NULL
+<13> NULL
+<14> NULL
+<15> NULL
+<16> NULL
+<17> NULL
+<18> NULL
+<19> NULL
+hash_delete: 0x24f95e0
+fd: 19 page_num: 1
+hash_insert: 0x24f95e0
+fd: 0 page_num 1
+hash_insert: 0x24f9610
+fd: 19 page_num 1
+hash_insert: 0x24f9740
+fd: 0 page_num 2
+CreateTable rel_catalog insertion done
+hash_insert: 0x24f9770
+fd: 19 page_num 2
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable rel_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+CreateTable attr_catalog insertion done
+<LRU-list Printing...>
+fd             unix_fd        page_num       count          dirty          data           
+
+0              3              1              0              1              $              
+19             4              1              0              1              ,              
+0              3              2              0              1              relcat         
+19             4              2              0              1              relcat         
+Total LRU-list Count : 4
+<Hash Table Printing...>
+<0> 19             1              
+<1> 19             2              
+<2> 0              2              
+<3> NULL
+<4> NULL
+<5> NULL
+<6> NULL
+<7> NULL
+<8> NULL
+<9> NULL
+<10> NULL
+<11> NULL
+<12> NULL
+<13> NULL
+<14> NULL
+<15> NULL
+<16> NULL
+<17> NULL
+<18> NULL
+<19> NULL
+hash_delete: 0x24f95e0
+fd: 0 page_num: 1
+hash_delete: 0x24f9740
+fd: 0 page_num: 2
+<LRU-list Printing...>
+fd             unix_fd        page_num       count          dirty          data           
+
+19             4              1              0              1              ,              
+19             4              2              0              1              relcat         
+Total LRU-list Count : 2
+<Hash Table Printing...>
+<0> 19             1              
+<1> 19             2              
+<2> NULL
+<3> NULL
+<4> NULL
+<5> NULL
+<6> NULL
+<7> NULL
+<8> NULL
+<9> NULL
+<10> NULL
+<11> NULL
+<12> NULL
+<13> NULL
+<14> NULL
+<15> NULL
+<16> NULL
+<17> NULL
+<18> NULL
+<19> NULL
+hash_delete: 0x24f9610
+fd: 19 page_num: 1
+hash_delete: 0x24f9770
+fd: 19 page_num: 2
+>>> Database testdb has been created
+hash_insert: 0x24f9770
+fd: 0 page_num 1
+hash_insert: 0x24f9610
+fd: 19 page_num 1
+connect success
+HelpTable with relcat
+hash_insert: 0x24f9740
+fd: 0 page_num 2
+hash_insert: 0x24f95e0
+fd: 19 page_num 2
+HF_GetNextRec: End of File
+Print relcat Schema
+-------------------------------------------------------------------------------------------------------------------
+|     relname[ 99: 12] |      relwid[105:  4] |     attrcnt[105:  4] |    indexcnt[105:  4] |    primattr[ 99: 12] 
+-------------------------------------------------------------------------------------------------------------------
+HelpTable with attrcat
+HF_GetNextRec: End of File
+Print attrcat Schema
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+|     relname[ 99: 12] |    attrname[ 99: 12] |      offset[105:  4] |     attrlen[105:  4] |    attrtype[105:  4] |     indexed[105:  4] |      attrno[105:  4] 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+Print the relation catalog
+HF_GetNextRec: End of File
+-------------------------------------------------------------------------------------------------------------------
+|     relname[ 99: 12] |      relwid[105:  4] |     attrcnt[105:  4] |    indexcnt[105:  4] |    primattr[ 99: 12] 
+-------------------------------------------------------------------------------------------------------------------
+                relcat                     36                      5                      0                   none 
+               attrcat                     44                      7                      0                   none 
+HF_GetNextRec: End of File

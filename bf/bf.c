@@ -146,11 +146,12 @@ static struct BFhash_entry *hashing(int fd,
 static int hash_insert(struct BFpage *page)
 {
 	/* TODO checking whether the page to be inserted is already in hash */
-	struct BFhash_entry *parent, *child;
+	struct BFhash_entry *parent;
+	struct BFhash_entry *child;
 	int hash;
 
-	child = (struct BFhash_entry*)malloc(sizeof(struct BFhash_entry));
-
+	child = malloc(sizeof(struct BFhash_entry));
+		
 	child->fd = page->fd;
 	child->page_num = page->page_num;
 	child->bpage = page;
@@ -166,6 +167,7 @@ static int hash_insert(struct BFpage *page)
 	}
 
 	hash_table[hash] = child;
+	
 	return BFE_OK;
 }
 
@@ -197,8 +199,6 @@ static int hash_delete(struct BFpage *page)
 		hash_elem->next_entry->prev_entry = hash_elem->prev_entry;
 	}
 	
-	printf("fd: %d page_num: %d\n", hash_elem->fd, hash_elem->page_num);
-	printf("error?\n");	
 	free(hash_elem);
 
 	return BFE_OK;
@@ -408,10 +408,6 @@ int BF_FlushBuf(int fd)
 	struct BFpage *page = NULL;
 	struct BFpage *next_page = NULL;
 
-	BF_ShowBuf();
-	BF_ShowHash();
-
-printf("BF_FlushBuf Tag\n");
 	for (page  = lru_head.next_page;
 	     !IS_LRU_TAIL(page);
 	     page  = page->next_page) {
@@ -423,29 +419,24 @@ printf("BF_FlushBuf Tag\n");
 		}
 	}
 
-printf("BF_FlushBuf Tag\n");
 	/* Duplicating theh code over for avoiding roll-back. */
 	for (page = lru_head.next_page;
 	     !IS_LRU_TAIL(page);
 	     page = next_page) {
 	
 		next_page = page->next_page;
+		/*
 		printf("BF_FlushBuf Page: %p NextPage: %p\n",
 				(void*)page, (void*)next_page);
-
+		*/
 		if (page->fd == fd) {
-			printf("flush_page\n");
 			flush_page(page);
-			printf("hash_delete\n");	
 			hash_delete(page);
-			printf("lru_delete\n");
 			lru_delete(page);
-			printf("free_page_return \n");
 			free_pages_return(page);
 		}
 	}
 
-printf("BF_FlushBuf Tag\n");
 	return BFE_OK;
 }
 

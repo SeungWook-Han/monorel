@@ -241,8 +241,6 @@ int _CreateTable(char *relName,
 	sprintf(rel_desc.primattr, "%s", "none");
 	HF_InsertRec(fd_cat_rel, (char*)(&rel_desc));
 
-	printf("CreateTable rel_catalog insertion done\n");
-
 	for (i = 0; i < numAttrs; i++) {
 		memcpy(attr_desc.relname, relName, MAXNAME);
 		memcpy(attr_desc.attrname, attrs[i].attrName, MAXNAME);
@@ -253,7 +251,6 @@ int _CreateTable(char *relName,
 		attr_desc.indexed = FALSE;
 		attr_desc.attrno = 0;
 		HF_InsertRec(fd_cat_attr, (char*)(&attr_desc));
-		printf("CreateTable attr_catalog insertion done\n");
 	}
 
 	return FEE_OK;
@@ -280,7 +277,7 @@ int CreateTable(char *relName,		/* name	of relation to create	   */
 		printf("[CreateTable] failed to HF_CreateFile\n");
 		exit(1);
 	}
-	printf("CreateTable start\n");
+	
 	return _CreateTable(relName, numAttrs, attrs, primAttrName, recSize);
 }
 
@@ -315,6 +312,13 @@ int DestroyTable(char *relName)
 		}
 	}
 
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		free(attr_list[i].attrName);
+	}
+
+	free(attr_list);
+	free(attr_recids);
+
 	return FEE_OK;
 }
 
@@ -341,18 +345,18 @@ int LoadTable(char *relName, char *fileName)
 	
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
-	buff = malloc(rel_desc.relwid + 1);
+	buff = malloc(rel_desc.relwid * sizeof(char));
 	
 	if ((fd_rel = HF_OpenFile(relName)) < 0) {
 		printf("[LoadTable] failed to open relcat\n");
 		exit(1);
 	}
-
-	if ((fd = open(fileName, O_RDONLY) < 0)) {
+	
+	if ((fd = open(fileName, O_RDWR)) < 2) {
 		printf("[LoadTable] failed to open data file\n");
 		exit(1);
 	}
-	
+
 	while ((ret = read(fd, buff, rel_desc.relwid)) != 0) {
 		HF_InsertRec(fd_rel, buff);
 	}
@@ -361,6 +365,14 @@ int LoadTable(char *relName, char *fileName)
 		printf("[LoadTable] failed to close relation\n");
 		exit(1);
 	}
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		free(attr_list[i].attrName);
+	}
+
+	free(attr_list);
+	free(buff);
+
 
 	return FEE_OK;
 }
@@ -401,6 +413,12 @@ int HelpTable(char *relName)
 			printf("-----------------------");
 		}
 		printf("\n");
+
+
+		for (i = 0; i < rel_desc.attrcnt; i++) {
+			free(attr_list[i].attrName);
+		}
+		free(attr_list);
 	}
 }
 
@@ -464,7 +482,7 @@ int PrintTable(char *relName)
 		exit(1);
 	}
 	
-	data_buff = malloc(rel_desc.relwid);
+	data_buff = malloc(sizeof(char) * rel_desc.relwid);
 
 	for (next_recid = HF_GetFirstRec(fd_rel, data_buff);
 	     HF_ValidRecId(fd_cat_attr, next_recid);
@@ -495,11 +513,19 @@ int PrintTable(char *relName)
 			}
 		}
 		printf("\n");
+		data_buff -= rel_desc.relwid;
 	}
 
 	if (strcmp(relName, RELCATNAME) && strcmp(relName, ATTRCATNAME)) {
 		HF_CloseFile(fd_rel);
 	} 
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		free(attr_list[i].attrName);
+	}
+
+	free(attr_list);
+	free(data_buff);
 
 	return 0;
 }
