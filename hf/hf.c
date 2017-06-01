@@ -71,25 +71,28 @@ int HF_CreateFile(char *fileName, int recSize)
 		printf("HF_CreateFile: PF_CreateFile return error\n");
 		return HFE_PF_CREATE;
 	}
-
+printf("HF_Create File tag\n");
 	/* We can allocate a new page as header page by pf layer */
 	if ((pf_fd = PF_OpenFile(fileName)) < 0) {
 		printf("HF_CreateFile: PF_OpenFile return error\n");
 		return HFE_PF_OPEN;
 	}
 
+printf("HF_Create File tag\n");
 	/* Allocate the new page for store header information of HF layer */
 	if (PF_AllocPage(pf_fd, &alloc_page_num, &buf) != PFE_OK) {
 		printf("HF_CreateFile: Failed to allocate new page for header\n");
 		return HFE_ALLOC_PAGE;
 	}
 
+printf("HF_Create File tag\n");
 	/* Header page should be the physically number 1 */
 	if (alloc_page_num != HF_HEADER_PAGE_NUM) {
 		printf("HF_CreateFile: Allocated page is not for header\n");
 		return HFE_ALLOC_PAGE;
 	}
 
+printf("HF_Create File tag\n");
 	/* Making header information to store into the created file */
 	header.rec_size = recSize;
 	header.nr_rec = (PAGE_SIZE - PAGE_FORMAT_SIZE) / recSize;
@@ -103,18 +106,21 @@ int HF_CreateFile(char *fileName, int recSize)
 		return HFE_HEADER_WRITE;
 	}
 
+printf("HF_Create File tag\n");
 	/* Unpinning the header page for flush */
 	if (PF_UnpinPage(pf_fd, HF_HEADER_PAGE_NUM, 1) != PFE_OK) {
 		printf("HF_CreateFile: PF_UnpinPage return error\n");
 		return HFE_PF_UNPIN;
 	}
 
+printf("HF_Create File tag\n");
 	/* Close the created file by pf */
 	if (PF_CloseFile(pf_fd) != PFE_OK) {
 		printf("HF_CreateFile: PF_CloseFile return error\n");
 		return HFE_PF_CLOSE;
 	}
 
+printf("HF_Create File tag\n");
 	/* printf("nr_record in page : %d\n", header.nr_rec); */
 
 	return HFE_OK;

@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include "minirel.h"
 #include "fe.h"
-#include "am.h"
+/* #include "am.h" */
 #include "hf.h"
 #include "catalog.h"
 
@@ -64,7 +64,6 @@ void create_student()
    ATTR_DESCR in_attrs[STUD_NUM_ATTRS];
 
    printf("Start create_student ...\n");
-
    /* specifying the attributes of the relation to be created */
    /* "sid", "sname", "gpa", "age", "advisor" attributes */
    make_attrDesc(&in_attrs[0],"sid",INT_TYPE,sizeof(int));
@@ -156,7 +155,7 @@ void load_student()
 
   if (LoadTable(STUDREL, STUD_LOADFILE) != FEE_OK) {
      FE_PrintError("Problem loading the student data file.\n");
-     printf("FEerrno==%d, AMerrno=%d, HFerrno=%d\n",FEerrno,AMerrno,HFerrno);
+     /*printf("FEerrno==%d, AMerrno=%d, HFerrno=%d\n",FEerrno,AMerrno,HFerrno); */
   }
   
   printf("End of loading student from %s ...\n",STUD_LOADFILE);
@@ -168,7 +167,7 @@ void load_professor()
 
   if (LoadTable(PROFREL, PROF_LOADFILE) != FEE_OK) {
      FE_PrintError("Problem loading the professor data file.\n");
-     printf("FEerrno==%d, AMerrno=%d, HFerrno=%d\n",FEerrno,AMerrno,HFerrno);
+     /* printf("FEerrno==%d, AMerrno=%d, HFerrno=%d\n",FEerrno,AMerrno,HFerrno); */
   }
   
   printf("End of loading professor from %s ...\n",PROF_LOADFILE);
@@ -236,6 +235,8 @@ int main(int argc, char *argv[])
 {
   int testnum, i;
 
+  FE_Init();
+
   cleanup();
   DBcreate(TESTDB);
   printf(">>> Database %s has been created\n", TESTDB);
@@ -249,7 +250,7 @@ int main(int argc, char *argv[])
   show_catalogs();
 
   printf(">>> Indexing and loading students ...\n");
-  index_student();
+  /*index_student(); */
   load_student();
   show_table(STUDREL);
   DBclose(TESTDB);
@@ -259,12 +260,12 @@ int main(int argc, char *argv[])
 
   printf(">>> Loading and indexing professors ...\n");
   load_professor();
-  index_professor();
+  /* index_professor(); */
   show_table(PROFREL);
 
   printf(">>> Dropping indexes of students and professors ...\n");
-  dropindex_student();
-  dropindex_professor();
+  /* dropindex_student(); */
+  /* dropindex_professor(); */
   show_catalogs();
 
   printf(">>> Destroying tables of students and professors ...\n");
