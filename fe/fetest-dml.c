@@ -378,7 +378,6 @@ int main(int argc, char *argv[])
   printf(">>> Selecting / Joining students and professors ...\n");
   select_student();
   select_professor();
-
   join_student_prof(NULL);
 
 

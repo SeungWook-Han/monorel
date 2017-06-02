@@ -780,6 +780,12 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 		free(resRelName);
 	}
 
+	for (i = 0; i < numProjAttrs; i++) {
+		free(projAttrs_ch[i]);
+	}
+
+	free(projAttrs_ch);
+
 	return 0;
 }
 
