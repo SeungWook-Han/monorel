@@ -11,6 +11,8 @@
 #include "minirel.h"
 #include "catalog.h"
 
+#define GHOST_FILE_SELECT "tmp_select"
+
 int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *recid);
 int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECID *recid);
 
@@ -313,6 +315,11 @@ int DestroyTable(char *relName)
 	free(attr_list);
 	free(attr_recids);
 
+	if ((ret = HF_DestroyFile(relName)) != HFE_OK) {
+		printf("[DestroyTable] failure from hf_destroyfile\n");
+		exit(1);
+	}
+
 	return FEE_OK;
 }
 
@@ -489,31 +496,299 @@ int Delete(char *relName, char *selAttr, int op,
 		exit(1);
 	}
 
+	free(buff);
+	free(attr_list);
+
 	return FEE_OK;
 }
 
-int Select(char *srcRelName, char *selAttr, int op, int valType, int valLength, void *value,
+int Select(char *srcRelName, char *selAttr, int op, 
+		int valType, int valLength, void *value, 
 		int numProjAttrs, char *projAttrs[], char *resRelName)
 {
-	int fd = 0;
+	int i = 0, j = 0;
+	int sd = 0, fd_dest = 0, fd_src = 0;
+	int cmp_attr_idx = 0;
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	ATTRDESCTYPE *filtered_attr_list;
+	ATTR_DESCR *attr_list_create;
+	char *in_buff, *out_buff;
+	RECID recid;
+	int new_table_width = 0;
+	int is_tmp = 0;
 
-	/* Preparing the output file here...  */
-	if (resRelName != NULL) {
-		/* Checking whether the resRelName relation is existed */
-		if (!isFileExist(resRelName)) {
-			/* Create the table */
-	
+	if (resRelName == NULL) {
+		resRelName = malloc(MAXNAME);
+		sprintf(resRelName, "%s", GHOST_FILE_SELECT);
+		is_tmp = 1;
+	}
+
+	Search_RelCatalog(srcRelName, &rel_desc, NULL);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	filtered_attr_list = calloc(numProjAttrs, ATTRDESCSIZE);
+	attr_list_create = calloc(numProjAttrs, sizeof(ATTR_DESCR));
+	Search_AttrCatalog(srcRelName, rel_desc.attrcnt, attr_list, NULL);
+
+	for (i = 0; i < numProjAttrs; i++) {
+		for (j = 0; j < rel_desc.attrcnt; j++) {
+			if (!strcmp(projAttrs[i], attr_list[j].attrname)) {
+				
+				attr_list_create[i].attrName = 
+						malloc(sizeof(char) * MAXNAME);
+				memcpy(attr_list_create[i].attrName,
+						attr_list[j].attrname, MAXNAME);
+				attr_list_create[i].attrType =
+						attr_list[j].attrtype;
+				attr_list_create[i].attrLen =
+						attr_list[j].attrlen;
+
+				memcpy(&filtered_attr_list[i], 
+					&attr_list[j], ATTRDESCSIZE);
+				new_table_width += attr_list[j].attrlen;
+				break;
+			}
 		}
-		
-		/* Now we guarantee the relation is exist */
-		/* Open the relation file */
+
+		if (j == rel_desc.attrcnt) {
+			printf("[Select] Can not find projAttrs in source relation\n");
+			exit(1);
+		}
+	}
+
+	if (!isFileExist(resRelName)) {
+		CreateTable(resRelName, numProjAttrs, 
+				attr_list_create, NULL);
+	}
+	/* Now we guarantee the dest relation is exist */
+	if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
+		printf("[Select] failed to open relation\n");
+		exit(1);
 	}
 
 	/* Retrieving the records */
+	in_buff = calloc(rel_desc.relwid, sizeof(char));
+	out_buff = calloc(new_table_width, sizeof(char));
 
+	if ((fd_src = HF_OpenFile(srcRelName)) < 0) {
+		printf("[Select] failed to open source relation\n");
+		exit(1);
+	}
+
+	/* Find the ATTRDESCTYPE of selAttr in attr_list */
+	if (selAttr != NULL) {
+		for (i = 0; i < rel_desc.attrcnt; i++) {
+			if (!strcmp(attr_list[i].attrname, selAttr)) {
+				cmp_attr_idx = i;
+				break;
+			}
+		}
+
+		if (i == rel_desc.attrcnt) {
+			printf("[Select] Can not find selAttr [%s] in src relation\n",
+										selAttr);
+			exit(1);
+		}
+		
+		if ((sd = HF_OpenFileScan(fd_src, valType, valLength, 
+					attr_list[cmp_attr_idx].offset,
+					op, value)) < 0) {
+			printf("[Select] failed to open file scan\n");
+			exit(1);
+		}
+	} else {
+		if ((sd = HF_OpenFileScan(fd_src, 0, 0, 0, 0, NULL)) < 0) {
+			printf("[Select] failed to open default file scan\n");
+			exit(1);
+		}
+	}
+
+	recid = HF_FindNextRec(sd, in_buff);
+	while (HF_ValidRecId(fd_src, recid)) {		
+		
+		for (i = 0; i < numProjAttrs; i++) {
+			memcpy(out_buff, in_buff + filtered_attr_list[i].offset,
+					filtered_attr_list[i].attrlen);
+			out_buff += filtered_attr_list[i].attrlen;
+		}
+		out_buff -= new_table_width;	
+		HF_InsertRec(fd_dest, out_buff);
+		recid = HF_FindNextRec(sd, in_buff);
+	}
+
+	HF_CloseFileScan(sd);
+	HF_CloseFile(fd_src);
+	HF_CloseFile(fd_dest);
+	free(in_buff);
+	free(out_buff);
+	free(attr_list);
+	for (i = 0; i < numProjAttrs; i++) {
+		free(attr_list_create[i].attrName);
+	}
+	free(attr_list_create);
+
+	if (is_tmp == 1) {
+		PrintTable(resRelName);
+		DestroyTable(resRelName);
+		free(resRelName);
+	}
 
 	return 0;
 }
+
+/*
+int Select(char *srcRelName, char *selAttr, int op, 
+		int valType, int valLength, void *value, 
+		int numProjAttrs, char *projAttrs[], char *resRelName)
+{
+	int i = 0, j = 0;
+	int sd = 0, fd_dest = 0, fd_src = 0;
+	int cmp_attr_idx = 0;
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	ATTRDESCTYPE *filtered_attr_list;
+	ATTR_DESCR *attr_list_create;
+	char *in_buff, *out_buff;
+	RECID recid;
+	int new_table_width = 0;
+	
+	Search_RelCatalog(srcRelName, &rel_desc, NULL);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	filtered_attr_list = calloc(numProjAttrs, ATTRDESCSIZE);
+	attr_list_create = calloc(numProjAttrs, sizeof(ATTR_DESCR));
+	Search_AttrCatalog(srcRelName, rel_desc.attrcnt, attr_list, NULL);
+
+	for (i = 0; i < numProjAttrs; i++) {
+		for (j = 0; j < rel_desc.attrcnt; j++) {
+			if (!strcmp(projAttrs[i], attr_list[j].attrname)) {
+				
+				attr_list_create[i].attrName = 
+						malloc(sizeof(char) * MAXNAME);
+				memcpy(attr_list_create[i].attrName,
+						attr_list[j].attrname, MAXNAME);
+				attr_list_create[i].attrType =
+						attr_list[j].attrtype;
+				attr_list_create[i].attrLen =
+						attr_list[j].attrlen;
+
+				memcpy(&filtered_attr_list[i], 
+					&attr_list[j], ATTRDESCSIZE);
+				new_table_width += attr_list[j].attrlen;
+				break;
+			}
+		}
+
+		if (j == rel_desc.attrcnt) {
+			printf("[Select] Can not find projAttrs in source relation\n");
+			exit(1);
+		}
+	}
+
+	if (resRelName != NULL) {
+		if (!isFileExist(resRelName)) {
+			CreateTable(resRelName, numProjAttrs, 
+					attr_list_create, NULL);
+		}
+		if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
+			printf("[Select] failed to open relation\n");
+			exit(1);
+		}
+	}
+
+	in_buff = calloc(rel_desc.relwid, sizeof(char));
+	out_buff = calloc(new_table_width, sizeof(char));
+
+	if ((fd_src = HF_OpenFile(srcRelName)) < 0) {
+		printf("[Select] failed to open source relation\n");
+		exit(1);
+	}
+
+	if (selAttr != NULL) {
+		for (i = 0; i < rel_desc.attrcnt; i++) {
+			if (!strcmp(attr_list[i].attrname, selAttr)) {
+				cmp_attr_idx = i;
+				break;
+			}
+		}
+
+		if (i == rel_desc.attrcnt) {
+			printf("[Select] Can not find selAttr [%s] in src relation\n",
+										selAttr);
+			exit(1);
+		}
+		
+		if ((sd = HF_OpenFileScan(fd_src, valType, valLength, 
+					attr_list[cmp_attr_idx].offset,
+					op, value)) < 0) {
+			printf("[Select] failed to open file scan\n");
+			exit(1);
+		}
+	} else {
+		if ((sd = HF_OpenFileScan(fd_src, 0, 0, 0, 0, NULL)) < 0) {
+			printf("[Select] failed to open default file scan\n");
+			exit(1);
+		}
+	}
+
+	if (resRelName != NULL) {
+		if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
+			printf("[Select] failed to open result relation\n");
+			exit(1);
+		}
+	}
+
+
+	recid = HF_FindNextRec(sd, in_buff);
+	while (HF_ValidRecId(fd_src, recid)) {		
+		if (resRelName != NULL) {
+			for (i = 0; i < numProjAttrs; i++) {
+				memcpy(out_buff, in_buff + filtered_attr_list[i].offset,
+						filtered_attr_list[i].attrlen);
+				out_buff += filtered_attr_list[i].attrlen;
+			}
+			out_buff -= new_table_width;	
+			HF_InsertRec(fd_dest, out_buff);
+		} else {
+			for (i = 0; i < numProjAttrs; i++) {
+				switch (filtered_attr_list[i].attrtype) {
+				case INT_TYPE:
+					printf("%d ", *(int *)(in_buff + 
+							filtered_attr_list[i].offset));
+					break;
+				case REAL_TYPE:
+					printf("%f ", *(float *)(in_buff + 
+							filtered_attr_list[i].offset));
+					break;
+				case STRING_TYPE:
+					printf("%s ", (char *)(in_buff + 
+							filtered_attr_list[i].offset));
+					break;
+				}
+			}
+
+			printf("\n");
+		}
+
+		recid = HF_FindNextRec(sd, in_buff);
+	}
+
+	HF_CloseFileScan(sd);
+	HF_CloseFile(fd_src);
+	if (resRelName != NULL) {
+		HF_CloseFile(fd_dest);
+	}
+	free(in_buff);
+	free(out_buff);
+	free(attr_list);
+	for (i = 0; i < numProjAttrs; i++) {
+		free(attr_list_create[i].attrName);
+	}
+	free(attr_list_create);
+	
+	return 0;
+}
+*/
+
 
 int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2, int numProjAttrs, 
 		REL_ATTR projAttrs[], char *resRelName)
