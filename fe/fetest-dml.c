@@ -249,6 +249,7 @@ void delete_student()
   float gpaval = 40.;
 
   printf("Start deleting students ... \n");
+  printf("Delete record less than %f\n", gpaval);
   DBconnect(TESTDB);
 
   if (Delete(STUDREL,"gpa",LT_OP,REAL_TYPE,
@@ -268,7 +269,7 @@ void delete_professor()
 
   if (Delete(PROFREL,"office",LE_OP,INT_TYPE,sizeof(int),&offval) != FEE_OK)
 	FE_PrintError("Delete professor faild.");
-
+  
   DBclose(TESTDB);
   printf("End deleting professors ... \n");
 }
@@ -356,6 +357,8 @@ int main(int argc, char *argv[])
   char *progname = argv[0];	/* since we will be changing argv */
   int testnum, i;
 
+  FE_Init();
+
   cleanup();
   DBcreate(TESTDB);
   printf(">>> Database %s has been created\n", TESTDB);
@@ -372,23 +375,25 @@ int main(int argc, char *argv[])
   show_table(STUDREL);
   insert_professor();
   show_table(PROFREL);
-
+/*
   printf(">>> Selecting / Joining students and professors ...\n");
   select_student();
   select_professor();
   join_student_prof(NULL);
+*/
 
   printf(">>> Deleting students and professors ...\n");
   delete_student();
   delete_professor();
   show_table(STUDREL);
   show_table(PROFREL);
-
+/*
   printf(">>> Indexing / Joining students and professors ...\n");
   index_student();
   index_professor();
   join_student_prof("stud_prof");
   show_table("stud_prof");
   show_catalogs();
+*/
 }
 

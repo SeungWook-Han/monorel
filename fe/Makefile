@@ -31,7 +31,7 @@ CFLAGS	= -g -ansi -pedantic
 
 ############################################################################
 
-
+####MyTest####
 #all: lib${LIB}.a ${LIB}mytest
 
 #${LIB}mytest: ${LIB}mytest.o lib${LIB}.a
@@ -41,9 +41,24 @@ CFLAGS	= -g -ansi -pedantic
 #	ar cr lib${LIB}.a $(OBJS)
 #	ranlib lib${LIB}.a
 
+#### TEST DDL ####
+#all: lib${LIB}.a ${LIB}test-ddl
+#
+#${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
+#	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
+#lib${LIB}.a: $(OBJS)
+#	ar cr lib${LIB}.a $(OBJS)
+#	ranlib lib${LIB}.a
 
-all: lib${LIB}.a ${LIB}test-ddl
+#### TEST DML ####
+all: lib${LIB}.a ${LIB}test-dml
+
+dml: lib${LIB}.a ${LIB}test-dml
+ddl: lib${LIB}.a ${LIB}test-ddl
+
+${LIB}test-dml: ${LIB}test-dml.o lib${LIB}.a
+	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
 ${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
 	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
@@ -51,9 +66,6 @@ ${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
 lib${LIB}.a: $(OBJS)
 	ar cr lib${LIB}.a $(OBJS)
 	ranlib lib${LIB}.a
-
-
-
 
 $(OBJS): ${INCS}
 

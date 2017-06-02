@@ -12,7 +12,7 @@
 #include "catalog.h"
 
 int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *recid);
-int Search_AttrCatalog(char *relName, int attrcnt, ATTR_DESCR *attr_list, RECID *recid);
+int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECID *recid);
 
 char data_dir[STR_SIZE];
 int fd_cat_rel, fd_cat_attr;
@@ -249,7 +249,7 @@ int _CreateTable(char *relName,
 		attr_desc.attrlen = attrs[i].attrLen;
 		attr_desc.attrtype = attrs[i].attrType;
 		attr_desc.indexed = FALSE;
-		attr_desc.attrno = 0;
+		attr_desc.attrno = i;
 		HF_InsertRec(fd_cat_attr, (char*)(&attr_desc));
 	}
 
@@ -287,19 +287,17 @@ int DestroyTable(char *relName)
 	struct _relation_desc rel_desc;
 	RECID rel_recid;
 	RECID *attr_recids;
-	ATTR_DESCR *attr_list;
+	ATTRDESCTYPE *attr_list;
 	int ret = 0, i = 0;
 
+	/* TODO: Indexing Task*/
 	Search_RelCatalog(relName, &rel_desc, &rel_recid);
 
-	attr_list = calloc(rel_desc.attrcnt, sizeof(ATTR_DESCR));
 	attr_recids = calloc(rel_desc.attrcnt, sizeof(RECID));
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		attr_list[i].attrName = malloc(MAXNAME);
-	}
-	
-	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);	
 
+	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
+	
 	if ((ret = HF_DeleteRec(fd_cat_rel, rel_recid)) < 0) {
 		printf("[DestroyTable] failed to Delete record in rel catalog\n");
 		exit(1);
@@ -312,10 +310,6 @@ int DestroyTable(char *relName)
 		}
 	}
 
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		free(attr_list[i].attrName);
-	}
-
 	free(attr_list);
 	free(attr_recids);
 
@@ -326,23 +320,18 @@ int DestroyTable(char *relName)
 int LoadTable(char *relName, char *fileName)
 {	
 	struct _relation_desc rel_desc;
-	ATTR_DESCR *attr_list;
+	ATTRDESCTYPE *attr_list;
 	int fd = 0, i = 0, ret = 0, fd_rel = 0;
 	char *buff;
 	
-
+	/* TODO: Indexing Task*/
 	if (!isFileExist(relName) || !isFileExist(fileName)) {
 		printf("[LoadTable] relation file and data file not exist \n");
 		exit(1);
 	}
 	
 	Search_RelCatalog(relName, &rel_desc, NULL);
-
-	attr_list = calloc(rel_desc.attrcnt, sizeof(ATTR_DESCR));
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		attr_list[i].attrName = malloc(MAXNAME);
-	}
-	
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
 	buff = malloc(rel_desc.relwid * sizeof(char));
@@ -366,10 +355,6 @@ int LoadTable(char *relName, char *fileName)
 		exit(1);
 	}
 
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		free(attr_list[i].attrName);
-	}
-
 	free(attr_list);
 	free(buff);
 
@@ -377,49 +362,213 @@ int LoadTable(char *relName, char *fileName)
 	return FEE_OK;
 }
 
+int Insert(char *relName, int numAttrs, ATTR_VAL values[])
+{
+	int i = 0, j = 0;
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	char *buff;
+	int fd_rel = 0;
+
+	/* TODO: Indexing Task */
+	if (!isFileExist(relName)) {
+		printf("[Insert] failed to open relation file\n");
+		exit(1);
+	}
+
+	Search_RelCatalog(relName, &rel_desc, NULL);
+	
+	if (numAttrs != rel_desc.attrcnt) {
+		printf("[Insert] Wrong number of attributes\n");
+		return FEE_WRONGVALTYPE;
+	}
+	
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
+
+	buff = calloc(sizeof(char) , rel_desc.relwid);
+	
+	if ((fd_rel = HF_OpenFile(relName)) < 0) {
+		printf("[Insert] failed to open relcat\n");
+		exit(1);
+	}
+
+	for (i = 0; i < numAttrs; i++) {
+		/* Find the field */
+		int find_flag = 0;
+		for (j = 0; j < rel_desc.attrcnt; j++) {
+			if (!strcmp(values[i].attrName, attr_list[j].attrname)) {
+				find_flag = 1;
+				break;
+			}
+		}
+
+		if (find_flag == 0) {
+			printf("[Insert] Wrong attribute name %s\n", 
+							values[i].attrName);
+			exit(1);
+		}
+	
+		memcpy(buff + attr_list[j].offset, values[i].value, values[i].valLength);
+	}
+
+	HF_InsertRec(fd_rel, buff);
+
+	if (HF_CloseFile(fd_rel)) {
+		printf("[Insert] failed to close table\n");
+		exit(1);
+	}
+	
+	return FEE_OK;
+}
+
+int Delete(char *relName, char *selAttr, int op, 
+	   int valType, int valLength, void *value)
+{
+	int sd = 0, hd = 0;
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	RECID recid;
+	int i = 0;
+	char *buff;
+
+	if (!isFileExist(relName)) {
+		printf("[Delte] the relation non-exist\n");
+		exit(1);
+	}
+
+	if ((hd = HF_OpenFile(relName)) < 0) {
+		printf("[Delte] failed to open relation\n");
+		exit(1);
+	}
+
+	Search_RelCatalog(relName, &rel_desc, NULL);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	buff = calloc(rel_desc.relwid, sizeof(char));
+	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
+
+	if (selAttr != NULL) {
+		/* Find the offset of selAttr in record */
+		for (i = 0; i < rel_desc.attrcnt; i++) {
+			if (!strcmp(selAttr, attr_list[i].attrname)) {
+				break;
+			}
+		}
+	
+		if (i == rel_desc.attrcnt) {
+			printf("[Delete] selAttr is not exist in relName relation\n");
+			exit(1);
+		}
+
+		if ((sd = HF_OpenFileScan(hd, valType, valLength, 
+					attr_list[i].offset, op, value)) < 0) {
+			printf("[Delete] problem in opening file scan\n");
+			exit(1);
+		}
+
+	} else {
+		if ((sd = HF_OpenFileScan(hd, 0, 0, 0, 0, NULL)) < 0) {
+			printf("[Delete] problem in opening null file scan\n");
+			exit(1);
+		}
+	}
+
+	recid = HF_FindNextRec(sd, buff);
+	while (HF_ValidRecId(hd, recid)) {
+		HF_DeleteRec(hd, recid);
+		recid = HF_FindNextRec(sd, buff);
+	}
+
+	if (HF_CloseFileScan(sd) != HFE_OK) {
+		printf("[Delete] failed to close scan\n");
+		exit(1);
+	}
+
+	if (HF_CloseFile(hd) != HFE_OK) {
+		printf("[Delete] failed to close relation file\n");
+		exit(1);
+	}
+
+	return FEE_OK;
+}
+
+int Select(char *srcRelName, char *selAttr, int op, int valType, int valLength, void *value,
+		int numProjAttrs, char *projAttrs[], char *resRelName)
+{
+	int fd = 0;
+
+	/* Preparing the output file here...  */
+	if (resRelName != NULL) {
+		/* Checking whether the resRelName relation is existed */
+		if (!isFileExist(resRelName)) {
+			/* Create the table */
+	
+		}
+		
+		/* Now we guarantee the relation is exist */
+		/* Open the relation file */
+	}
+
+	/* Retrieving the records */
+
+
+	return 0;
+}
+
+int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2, int numProjAttrs, 
+		REL_ATTR projAttrs[], char *resRelName)
+{
+	return 0;
+}
 
 int HelpTable(char *relName)
 {
 	struct _relation_desc rel_desc;
-	ATTR_DESCR *attr_list;
+	/* ATTR_DESCR *attr_list; */
+	ATTRDESCTYPE *attr_list;
 	int i = 0;
+	int nr_attr_field = 6;
 
 	if (relName == NULL) {
 		PrintTable(RELCATNAME);
 	} else {
 		Search_RelCatalog(relName, &rel_desc, NULL);
 
-		attr_list = calloc(rel_desc.attrcnt, sizeof(ATTR_DESCR));
-		for (i = 0; i < rel_desc.attrcnt; i++) {
-			attr_list[i].attrName = malloc(MAXNAME);
-		}
-	
+		attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 		Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
-		printf("Print %s Schema\n", relName);
-		for (i = 0; i < rel_desc.attrcnt; i++) {
-			printf("-----------------------");
+		printf("<Print %s Schema>\n", relName);
+		for (i = 0; i < nr_attr_field; i++) {
+			printf("---------------");
 		}
 		printf("\n");
-	
-		for (i = 0; i < rel_desc.attrcnt; i++) {
-			printf("|%12s[%3d:%3d] ", attr_list[i].attrName, 
-					      attr_list[i].attrType,
-					      attr_list[i].attrLen);
-		}
-
-		printf("\n");
-		for (i = 0; i < rel_desc.attrcnt; i++) {
-			printf("-----------------------");
+		
+		printf("| %12s | %12s | %12s | %12s | %12s | %12s |\n", 
+				"attrname", "offset", "length", 
+				"type", "indexed", "attrno");
+		
+		for (i = 0; i < nr_attr_field; i++) {
+			printf("---------------");
 		}
 		printf("\n");
 
-
 		for (i = 0; i < rel_desc.attrcnt; i++) {
-			free(attr_list[i].attrName);
+			/* attrname offset length type indexed attrno */
+			printf("| %12s | %12d | %12d | %12d | %12d | %12d |\n", 
+				attr_list[i].attrname, attr_list[i].offset,
+				attr_list[i].attrlen, attr_list[i].attrtype,
+				attr_list[i].indexed, attr_list[i].attrno);
 		}
+
+		for (i = 0; i < nr_attr_field; i++) {
+			printf("---------------");
+		}
+		printf("\n");
+
 		free(attr_list);
 	}
+
+	return 0;
 }
 
 
@@ -428,7 +577,8 @@ int PrintTable(char *relName)
 	RECID next_recid;
 	struct _relation_desc rel_desc;
 	struct _attribute_desc attr_desc;
-	ATTR_DESCR *attr_list;
+	ATTRDESCTYPE *attr_list;
+	/* ATTR_DESCR *attr_list; */
 	int i = 0;
 	int fd_rel = 0;
 	char *data_buff;
@@ -442,28 +592,26 @@ int PrintTable(char *relName)
 
 	/* We find the relation in rel_catalog */
 	/* Find the attribute metadata in attr_catalog */
-	attr_list = calloc(rel_desc.attrcnt, sizeof(ATTR_DESCR));
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		attr_list[i].attrName = malloc(MAXNAME);
-	}
-	
+
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
+	printf("<Print %s Table>\n", relName);
+	
 	/* Print Schema */
 	for (i = 0; i < rel_desc.attrcnt; i++) {
-		printf("-----------------------");
+		printf("---------------");
 	}
 	printf("\n");
 	
 	for (i = 0; i < rel_desc.attrcnt; i++) {
-		printf("|%12s[%3d:%3d] ", attr_list[i].attrName, 
-				      attr_list[i].attrType,
-				      attr_list[i].attrLen);
+		printf("| %12s ", attr_list[i].attrname);
 	}
-
-	printf("\n");
+	
+	printf("|\n");
 	for (i = 0; i < rel_desc.attrcnt; i++) {
-		printf("-----------------------");
+		printf("---------------");
 	}
 	printf("\n");
 
@@ -494,35 +642,37 @@ int PrintTable(char *relName)
 		}
 
 		for (i = 0; i < rel_desc.attrcnt; i++) {
-			switch (attr_list[i].attrType) {
+			switch (attr_list[i].attrtype) {
 			case INT_TYPE:
-				printf("%22d ", *((int*)data_buff));
-				data_buff += attr_list[i].attrLen;
+				printf("| %12d ", *((int*)data_buff));
+				data_buff += attr_list[i].attrlen;
 				break;
 			case REAL_TYPE:
-				printf("%22f ", *((float*)data_buff));
-				data_buff += attr_list[i].attrLen;
+				printf("| %12f ", *((float*)data_buff));
+				data_buff += attr_list[i].attrlen;
 				break;
 			case STRING_TYPE:
-				printf("%22s ", (char*)data_buff);
-				data_buff += attr_list[i].attrLen;
+				printf("| %12s ", (char*)data_buff);
+				data_buff += attr_list[i].attrlen;
 				break;
 			default:
-				printf("error\n");
+				printf("[PrintTable] Error\n");
 				exit(1);
 			}
 		}
-		printf("\n");
+		printf("|\n");
 		data_buff -= rel_desc.relwid;
 	}
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		printf("---------------");
+	}
+
+	printf("\n");
 
 	if (strcmp(relName, RELCATNAME) && strcmp(relName, ATTRCATNAME)) {
 		HF_CloseFile(fd_rel);
 	} 
-
-	for (i = 0; i < rel_desc.attrcnt; i++) {
-		free(attr_list[i].attrName);
-	}
 
 	free(attr_list);
 	free(data_buff);
@@ -562,8 +712,18 @@ int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *rec
 	return 0;
 }
 
+int qsort_compare(const void *first, const void *second)
+{
+	if (((ATTRDESCTYPE *)first)->offset > ((ATTRDESCTYPE *)second)->offset)
+		return 1;
+	else if (((ATTRDESCTYPE *)first)->offset < ((ATTRDESCTYPE *)second)->offset)
+		return -1;
+	else
+		return 0;
+}
+
 /* Search attributes data in attr_catalog */
-int Search_AttrCatalog(char *relName, int attrcnt, ATTR_DESCR *attr_list, RECID *recids)
+int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECID *recids)
 {
 	RECID next_recid;
 	int count = 0;
@@ -579,9 +739,7 @@ int Search_AttrCatalog(char *relName, int attrcnt, ATTR_DESCR *attr_list, RECID 
 
 		if (!strcmp(relName, attr_desc.relname)) {
 			
-			memcpy(attr_list[count].attrName, attr_desc.attrname, MAXNAME);
-			attr_list[count].attrType = attr_desc.attrtype;
-			attr_list[count].attrLen = attr_desc.attrlen;
+			memcpy(&attr_list[count], &attr_desc, ATTRDESCSIZE);
 			if (recids != NULL) {
 				memcpy(&recids[count], &next_recid, sizeof(RECID));
 			}
@@ -593,6 +751,9 @@ int Search_AttrCatalog(char *relName, int attrcnt, ATTR_DESCR *attr_list, RECID 
 		printf("[PrintTable]: Can not find all attributes data in attr catalog\n");
 		exit(1);
 	}
+
+	qsort(attr_list, attrcnt, ATTRDESCSIZE, qsort_compare);
+	return 0;
 }
 
 int BuildIndex(char *relName, char *attrName)
