@@ -293,7 +293,6 @@ void select_student()
   if (Select(STUDREL,"gpa",GT_OP,REAL_TYPE,sizeof(float),&gpaval,
 		numProjs,projAttrs,NULL) != FEE_OK)
 	FE_PrintError("Select student.sid faild.");
-  printf("Success!\n\n");
   DBclose(TESTDB);
 }
 
@@ -379,15 +378,17 @@ int main(int argc, char *argv[])
   printf(">>> Selecting / Joining students and professors ...\n");
   select_student();
   select_professor();
-/*
-  join_student_prof(NULL);
-*/
 
+  join_student_prof(NULL);
+
+
+/*
   printf(">>> Deleting students and professors ...\n");
   delete_student();
   delete_professor();
   show_table(STUDREL);
   show_table(PROFREL);
+*/
 /*
   printf(">>> Indexing / Joining students and professors ...\n");
   index_student();

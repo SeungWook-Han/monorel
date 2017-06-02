@@ -11,7 +11,8 @@
 #include "minirel.h"
 #include "catalog.h"
 
-#define GHOST_FILE_SELECT "tmp_select"
+#define SEARCH_TMP_FILE_MARK "_s_tmp"
+#define JOIN_TMP_FILE_MARK "_j_tmp"
 
 int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *recid);
 int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECID *recid);
@@ -307,7 +308,7 @@ int DestroyTable(char *relName)
 
 	for (i = 0; i < rel_desc.attrcnt; i++) {
 		if ((ret = HF_DeleteRec(fd_cat_attr, attr_recids[i])) < 0) {
-			printf("[DestroyTable] failed to Delete record in attr catalog\n");
+			printf("[DestroyTable] failed delete record in attr catalog\n");
 			exit(1);
 		}
 	}
@@ -393,7 +394,7 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
-	buff = calloc(sizeof(char) , rel_desc.relwid);
+	buff = calloc(sizeof(char), rel_desc.relwid);
 	
 	if ((fd_rel = HF_OpenFile(relName)) < 0) {
 		printf("[Insert] failed to open relcat\n");
@@ -425,7 +426,10 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 		printf("[Insert] failed to close table\n");
 		exit(1);
 	}
-	
+
+	free(buff);
+	free(attr_list);
+
 	return FEE_OK;
 }
 
@@ -520,7 +524,7 @@ int Select(char *srcRelName, char *selAttr, int op,
 
 	if (resRelName == NULL) {
 		resRelName = malloc(MAXNAME);
-		sprintf(resRelName, "%s", GHOST_FILE_SELECT);
+		sprintf(resRelName, "%s", SEARCH_TMP_FILE_MARK);
 		is_tmp = 1;
 	}
 
@@ -532,6 +536,7 @@ int Select(char *srcRelName, char *selAttr, int op,
 
 	for (i = 0; i < numProjAttrs; i++) {
 		for (j = 0; j < rel_desc.attrcnt; j++) {
+			
 			if (!strcmp(projAttrs[i], attr_list[j].attrname)) {
 				
 				attr_list_create[i].attrName = 
@@ -636,163 +641,145 @@ int Select(char *srcRelName, char *selAttr, int op,
 	return 0;
 }
 
-/*
-int Select(char *srcRelName, char *selAttr, int op, 
-		int valType, int valLength, void *value, 
-		int numProjAttrs, char *projAttrs[], char *resRelName)
+/* What will op be?, Assumption that op is always equal */
+int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2, 
+	int numProjAttrs, REL_ATTR projAttrs[], char *resRelName)
 {
-	int i = 0, j = 0;
-	int sd = 0, fd_dest = 0, fd_src = 0;
-	int cmp_attr_idx = 0;
-	RELDESCTYPE rel_desc;
-	ATTRDESCTYPE *attr_list;
-	ATTRDESCTYPE *filtered_attr_list;
-	ATTR_DESCR *attr_list_create;
-	char *in_buff, *out_buff;
-	RECID recid;
-	int new_table_width = 0;
-	
-	Search_RelCatalog(srcRelName, &rel_desc, NULL);
-	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
-	filtered_attr_list = calloc(numProjAttrs, ATTRDESCSIZE);
-	attr_list_create = calloc(numProjAttrs, sizeof(ATTR_DESCR));
-	Search_AttrCatalog(srcRelName, rel_desc.attrcnt, attr_list, NULL);
+	/*Open two input files and one output file */
+	int is_tmp = 0;
+	int fd_input1 = 0, fd_input2 = 0, fd_output = 0;
+	int sd_input1 = 0, sd_input2 = 0;
+	char *in_buff1, *in_buff2, *out_buff;
+	int attr_idx1 = -1, attr_idx2 = -1;
+	RECID recid1, recid2;
+	ATTRDESCTYPE *attr_list1, *attr_list2;
+	RELDESCTYPE rel_desc1, rel_desc2;
+	ATTR_DESCR *attr_create;
+	int nr_attr_create = 0;
+	int i = 0;
+	char **projAttrs_ch;
 
-	for (i = 0; i < numProjAttrs; i++) {
-		for (j = 0; j < rel_desc.attrcnt; j++) {
-			if (!strcmp(projAttrs[i], attr_list[j].attrname)) {
-				
-				attr_list_create[i].attrName = 
-						malloc(sizeof(char) * MAXNAME);
-				memcpy(attr_list_create[i].attrName,
-						attr_list[j].attrname, MAXNAME);
-				attr_list_create[i].attrType =
-						attr_list[j].attrtype;
-				attr_list_create[i].attrLen =
-						attr_list[j].attrlen;
+	/* For Test */
+	int count = 0;
+	/* */
 
-				memcpy(&filtered_attr_list[i], 
-					&attr_list[j], ATTRDESCSIZE);
-				new_table_width += attr_list[j].attrlen;
-				break;
-			}
-		}
+	if (resRelName == NULL) {
+		resRelName = malloc(MAXNAME);
+		sprintf(resRelName, "%s", JOIN_TMP_FILE_MARK);
+		is_tmp = 1;
+	}
 
-		if (j == rel_desc.attrcnt) {
-			printf("[Select] Can not find projAttrs in source relation\n");
-			exit(1);
+	Search_RelCatalog(joinAttr1->relName, &rel_desc1, NULL);
+	Search_RelCatalog(joinAttr2->relName, &rel_desc2, NULL);
+
+	attr_list1 = calloc(rel_desc1.attrcnt, ATTRDESCSIZE);
+	attr_list2 = calloc(rel_desc2.attrcnt, ATTRDESCSIZE);
+
+	Search_AttrCatalog(joinAttr1->relName, rel_desc1.attrcnt, attr_list1, NULL);
+	Search_AttrCatalog(joinAttr2->relName, rel_desc2.attrcnt, attr_list2, NULL);
+
+	fd_input1 = HF_OpenFile(joinAttr1->relName);
+	fd_input2 = HF_OpenFile(joinAttr2->relName);
+
+	/* Create new relation as the result of join */	
+	nr_attr_create = rel_desc1.attrcnt + rel_desc2.attrcnt;
+	attr_create = calloc(nr_attr_create, sizeof(ATTR_DESCR));
+	for (i = 0; i < rel_desc1.attrcnt; i++) {
+		attr_create[i].attrName = malloc(MAXNAME);
+		memcpy(attr_create[i].attrName, attr_list1[i].attrname, MAXNAME);
+		attr_create[i].attrType = attr_list1[i].attrtype;
+		attr_create[i].attrLen = attr_list1[i].attrlen;
+		if (!strcmp(joinAttr1->attrName, attr_list1[i].attrname)) {
+			attr_idx1 = i;
 		}
 	}
 
-	if (resRelName != NULL) {
-		if (!isFileExist(resRelName)) {
-			CreateTable(resRelName, numProjAttrs, 
-					attr_list_create, NULL);
-		}
-		if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
-			printf("[Select] failed to open relation\n");
-			exit(1);
+	for (i = 0; i < rel_desc2.attrcnt; i++) {
+		int idx = rel_desc1.attrcnt + i;
+		attr_create[idx].attrName = malloc(MAXNAME);
+		memcpy(attr_create[idx].attrName, attr_list2[i].attrname, MAXNAME);
+		attr_create[idx].attrType = attr_list2[i].attrtype;
+		attr_create[idx].attrLen = attr_list2[i].attrlen;
+		if (!strcmp(joinAttr2->attrName, attr_list2[i].attrname)) {
+			attr_idx2 = i;
 		}
 	}
 
-	in_buff = calloc(rel_desc.relwid, sizeof(char));
-	out_buff = calloc(new_table_width, sizeof(char));
-
-	if ((fd_src = HF_OpenFile(srcRelName)) < 0) {
-		printf("[Select] failed to open source relation\n");
+	if (attr_idx1 == -1 || attr_idx2 == -1) {
+		printf("[Join] Can not find join attr in each relation\n");
 		exit(1);
 	}
 
-	if (selAttr != NULL) {
-		for (i = 0; i < rel_desc.attrcnt; i++) {
-			if (!strcmp(attr_list[i].attrname, selAttr)) {
-				cmp_attr_idx = i;
-				break;
-			}
-		}
+	if (!isFileExist(resRelName)) {
+		CreateTable(resRelName, nr_attr_create, attr_create, NULL);
+	}
+	fd_output = HF_OpenFile(resRelName);
 
-		if (i == rel_desc.attrcnt) {
-			printf("[Select] Can not find selAttr [%s] in src relation\n",
-										selAttr);
-			exit(1);
-		}
+	/* Doing join */
+	sd_input1 = HF_OpenFileScan(fd_input1, 0, 0, 0, 0, NULL);
+	sd_input2 = HF_OpenFileScan(fd_input2, 0, 0, 0, 0, NULL);
+
+	in_buff1 = malloc(rel_desc1.relwid);
+	in_buff2 = malloc(rel_desc2.relwid);
+	out_buff = malloc(rel_desc1.relwid + rel_desc2.relwid);
+
+	printf("idx1 : %d, idx2 : %d\n", attr_idx1, attr_idx2);
+
+	recid1 = HF_FindNextRec(sd_input1, in_buff1);
+	while (HF_ValidRecId(fd_input1, recid1)) {
 		
-		if ((sd = HF_OpenFileScan(fd_src, valType, valLength, 
-					attr_list[cmp_attr_idx].offset,
-					op, value)) < 0) {
-			printf("[Select] failed to open file scan\n");
-			exit(1);
-		}
-	} else {
-		if ((sd = HF_OpenFileScan(fd_src, 0, 0, 0, 0, NULL)) < 0) {
-			printf("[Select] failed to open default file scan\n");
-			exit(1);
-		}
-	}
-
-	if (resRelName != NULL) {
-		if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
-			printf("[Select] failed to open result relation\n");
-			exit(1);
-		}
-	}
-
-
-	recid = HF_FindNextRec(sd, in_buff);
-	while (HF_ValidRecId(fd_src, recid)) {		
-		if (resRelName != NULL) {
-			for (i = 0; i < numProjAttrs; i++) {
-				memcpy(out_buff, in_buff + filtered_attr_list[i].offset,
-						filtered_attr_list[i].attrlen);
-				out_buff += filtered_attr_list[i].attrlen;
-			}
-			out_buff -= new_table_width;	
-			HF_InsertRec(fd_dest, out_buff);
-		} else {
-			for (i = 0; i < numProjAttrs; i++) {
-				switch (filtered_attr_list[i].attrtype) {
-				case INT_TYPE:
-					printf("%d ", *(int *)(in_buff + 
-							filtered_attr_list[i].offset));
-					break;
-				case REAL_TYPE:
-					printf("%f ", *(float *)(in_buff + 
-							filtered_attr_list[i].offset));
-					break;
-				case STRING_TYPE:
-					printf("%s ", (char *)(in_buff + 
-							filtered_attr_list[i].offset));
-					break;
-				}
+		recid2 = HF_FindNextRec(sd_input2, in_buff2);
+		while (HF_ValidRecId(fd_input2, recid2)) {
+			if (!strncmp(in_buff1 + attr_list1[attr_idx1].offset,
+				     in_buff2 + attr_list2[attr_idx2].offset,
+				     attr_list1[attr_idx1].attrlen)) {
+				memcpy(out_buff, in_buff1, rel_desc1.relwid);
+				memcpy(out_buff + rel_desc1.relwid, in_buff2,
+							   rel_desc2.relwid);
+				HF_InsertRec(fd_output, out_buff);
 			}
 
-			printf("\n");
+			recid2 = HF_FindNextRec(sd_input2, in_buff2);
 		}
 
-		recid = HF_FindNextRec(sd, in_buff);
+		HF_CloseFileScan(sd_input2);
+		sd_input2 = HF_OpenFileScan(fd_input2, 0, 0, 0, 0, NULL);
+		recid1 = HF_FindNextRec(sd_input1, in_buff1);
 	}
 
-	HF_CloseFileScan(sd);
-	HF_CloseFile(fd_src);
-	if (resRelName != NULL) {
-		HF_CloseFile(fd_dest);
-	}
-	free(in_buff);
-	free(out_buff);
-	free(attr_list);
+	/* Close scan files */
+	HF_CloseFileScan(sd_input1);
+	HF_CloseFileScan(sd_input2);
+	HF_CloseFile(fd_input1);
+	HF_CloseFile(fd_input2);
+	HF_CloseFile(fd_output);
+
+	projAttrs_ch = malloc(sizeof(char *) * numProjAttrs);
 	for (i = 0; i < numProjAttrs; i++) {
-		free(attr_list_create[i].attrName);
+		projAttrs_ch[i] = malloc(MAXNAME);
+		memcpy(projAttrs_ch[i], projAttrs[i].attrName, MAXNAME);
 	}
-	free(attr_list_create);
-	
-	return 0;
-}
-*/
 
+	Select(resRelName, NULL, 0, 0, 0, NULL, numProjAttrs, projAttrs_ch, NULL);
 
-int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2, int numProjAttrs, 
-		REL_ATTR projAttrs[], char *resRelName)
-{
+	/* Mem Free */
+	for (i = 0; i < nr_attr_create; i++) {
+		free(attr_create[i].attrName);
+	}
+
+	free(in_buff1);
+	free(in_buff2);
+	free(out_buff);
+	free(attr_list1);
+	free(attr_list2);
+	free(attr_create);
+
+	if (is_tmp == 1) {
+		/* PrintTable(resRelName); */
+		DestroyTable(resRelName);
+		free(resRelName);
+	}
+
 	return 0;
 }
 
@@ -857,6 +844,7 @@ int PrintTable(char *relName)
 	int i = 0;
 	int fd_rel = 0;
 	char *data_buff;
+	int count = 0;
 
 	if (fd_cat_attr == fd_cat_rel == -1) {
 		printf("[PrintTable] database is not connected\n");
@@ -908,7 +896,7 @@ int PrintTable(char *relName)
 	data_buff = malloc(sizeof(char) * rel_desc.relwid);
 
 	for (next_recid = HF_GetFirstRec(fd_rel, data_buff);
-	     HF_ValidRecId(fd_cat_attr, next_recid);
+	     HF_ValidRecId(fd_rel, next_recid);
 	     next_recid = HF_GetNextRec(fd_rel, next_recid, data_buff)) {
 
 		if (!HF_ValidRecId(fd_cat_attr, next_recid)) {
