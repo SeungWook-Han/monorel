@@ -138,8 +138,6 @@ void amtest2()
       HF_PrintError("Problem opening");
       exit(1);
    }
-   printf("<File1 Open Success>\n");
-
    if ((am_fd = AM_OpenIndex(FILE1,1)) < 0) {
       AM_PrintError("Problem opening index");
       exit(1);
@@ -154,7 +152,6 @@ void amtest2()
       AM_PrintError("Problem opening index scan");
       exit(1);
    }
-   printf("<Index File1 Open Success>\n");
 
    /* Pulling recid using the B+ Tree and printing the record */
    /* by using the retrieved recid and HF_GetThisRec()        */
@@ -164,12 +161,8 @@ void amtest2()
       /* clearing retrieved_value  */
       memset(retrieved_value, ' ', STRSIZE);
       recid = AM_FindNextEntry(sd);
-      printf("AM_FindNExtEntry success\n");
-
-      if (!HF_ValidRecId(hf_fd,recid)) { 
-        printf("AM_FindNextEntry return invalid\n");
-	if (AMerrno == AME_EOF) break; /*Out of records satisfying predicate */
-      }
+      if (!HF_ValidRecId(hf_fd,recid)) 
+         if (AMerrno == AME_EOF) break; /*Out of records satisfying predicate */
       else
       {
          AM_PrintError("Problem finding next entry");
