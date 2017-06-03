@@ -301,6 +301,7 @@ int CreateTable(char *relName,		/* name	of relation to create	   */
 }
 
 
+/* Index task included */
 int DestroyTable(char *relName)
 {
 	struct _relation_desc rel_desc;
@@ -309,14 +310,21 @@ int DestroyTable(char *relName)
 	ATTRDESCTYPE *attr_list;
 	int ret = 0, i = 0;
 
-	/* TODO: Indexing Task*/
 	Search_RelCatalog(relName, &rel_desc, &rel_recid);
 
 	attr_recids = calloc(rel_desc.attrcnt, sizeof(RECID));
 	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);	
 
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
-	
+
+	/* For each indexed attribute, delete index files */
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (attr_list[i].indexed == 1) {
+			AM_DestroyIndex(relName, attr_list[i].attrno);
+		}
+	}
+	/***************************************************/
+
 	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
 		printf("[DestroyTable] failed to Delete record in rel catalog\n");
 		FEerrno = FEE_HF;
@@ -343,15 +351,33 @@ int DestroyTable(char *relName)
 	return FEE_OK;
 }
 
+int BuildIndex(char *relName, char *attrName)
+{
+	/* 1. Call AM_Create */
+	/* 2. Update relation meta data */
+	/* 3. AM_Insert pre-exist records */
+	return FEE_OK;
+}
 
+int DropIndex(char *relName, char *attrName)
+{
+	/* 1. Call AM_Destroy */
+	/* 2. Update relation meta data */
+	return FEE_OK;
+}
+
+/* Index task included */
 int LoadTable(char *relName, char *fileName)
 {	
 	struct _relation_desc rel_desc;
 	ATTRDESCTYPE *attr_list;
 	int fd = 0, i = 0, ret = 0, fd_rel = 0;
 	char *buff;
-	
-	/* TODO: Indexing Task*/
+	ATTRDESCTYPE **index_attr_list;
+	int *index_fds;
+	int i_cnt = 0;
+	RECID recid;
+
 	if (!isFileExist(relName) || !isFileExist(fileName)) {
 		printf("[LoadTable] relation file and data file not exist \n");
 		FEerrno = FEE_NONEXISTTABLE;
@@ -362,8 +388,10 @@ int LoadTable(char *relName, char *fileName)
 	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
+	index_attr_list = malloc(rel_desc.indexcnt * sizeof(ATTRDESCTYPE *));
+	index_fds = malloc(rel_desc.indexcnt * sizeof(int));
 	buff = malloc(rel_desc.relwid * sizeof(char));
-	
+
 	if ((fd_rel = HF_OpenFile(relName)) < 0) {
 		printf("[LoadTable] failed to open relcat\n");
 		FEerrno = FEE_HF;
@@ -376,9 +404,28 @@ int LoadTable(char *relName, char *fileName)
 		return FEE_LOADFILEOPEN;
 	}
 
-	while ((ret = read(fd, buff, rel_desc.relwid)) != 0) {
-		HF_InsertRec(fd_rel, buff);
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (attr_list[i].indexed == 1) {
+			index_attr_list[i_cnt] = &attr_list[i];
+			index_fds[i_cnt] = AM_OpenIndex(relName, 
+							attr_list[i].attrno);
+			i_cnt++;
+		}
 	}
+
+	while ((ret = read(fd, buff, rel_desc.relwid)) != 0) {
+		recid = HF_InsertRec(fd_rel, buff);
+		for (i = 0; i < i_cnt; i) {
+			AM_InsertEntry(index_fds[i], buff + 
+					index_attr_list[i].offset, recid);
+		}
+	}
+
+	for (i = 0; i < i_cnt; i++) {
+		AM_CloseIndex(index_fds[i]);
+	}
+
+	close(fd);
 
 	if (HF_CloseFile(fd_rel)) {
 		printf("[LoadTable] failed to close relation\n");
@@ -386,9 +433,10 @@ int LoadTable(char *relName, char *fileName)
 		return FEE_HF;
 	}
 
+	free(index_attr_list);
 	free(attr_list);
 	free(buff);
-
+	free(index_fds);
 
 	return FEE_OK;
 }
@@ -400,8 +448,11 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 	ATTRDESCTYPE *attr_list;
 	char *buff;
 	int fd_rel = 0;
-
-	/* TODO: Indexing Task */
+	ATTRDESCTYPE **index_attr_list;
+	int *index_fds;
+	int i_cnt = 0;
+	RECID recid;
+	
 	if (!isFileExist(relName)) {
 		printf("[Insert] failed to open relation file\n");
 		FEerrno = FEE_NONEXISTTABLE;
@@ -410,11 +461,23 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 
 	Search_RelCatalog(relName, &rel_desc, NULL);
 	
+	/* Checking attributes validation */
 	if (numAttrs != rel_desc.attrcnt) {
 		printf("[Insert] Wrong number of attributes\n");
-		return FEE_WRONGVALTYPE;
+		FEerrno = FEE_WRONG_ATTR_TYPE;
+		return FEE_WRONG_ATTR_TYPE;
 	}
-	
+
+	for (i = 0; i < numAttrs; i++) {
+		if (values[i].value == NULL) {
+			printf("[Insert] Wrong value of attr\n");
+			FEerrno = FEE_WRONG_ATTR_TYPE;
+			return FEE_WRONG_ATTR_TYPE;
+		}
+	}
+
+	index_attr_list = malloc(rel_desc.indexcnt * sizeof(ATTRDESCTYPE *));
+	index_fds = malloc(rel_desc.indexcnt * sizeof(int));
 	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, NULL);
 
@@ -427,7 +490,6 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 	}
 
 	for (i = 0; i < numAttrs; i++) {
-		/* Find the field */
 		int find_flag = 0;
 		for (j = 0; j < rel_desc.attrcnt; j++) {
 			if (!strcmp(values[i].attrName, attr_list[j].attrname)) {
@@ -446,7 +508,25 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 		memcpy(buff + attr_list[j].offset, values[i].value, values[i].valLength);
 	}
 
-	HF_InsertRec(fd_rel, buff);
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (attr_list[i].indexed == 1) {
+			index_attr_list[i_cnt] = &attr_list[i];
+			index_fds[i_cnt] = AM_OpenIndex(relName,
+							attr_list[i].attrno);
+			i_cnt++;
+		}
+	}
+
+	recid = HF_InsertRec(fd_rel, buff);
+
+	for (i = 0; i < i_cnt; i++) {
+		AM_InsertEntry(index_fds[i], buff + 
+				index_attr_list[i].offset, recid);
+	}
+
+	for (i = 0; i < i_cnt; i++) {
+		AM_CloseIndex(index_fds[i]);
+	}
 
 	if (HF_CloseFile(fd_rel)) {
 		printf("[Insert] failed to close table\n");
@@ -454,8 +534,10 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 		return FEE_HF;
 	}
 
-	free(buff);
+	free(index_attr_list);
 	free(attr_list);
+	free(buff);
+	free(index_fds);
 
 	return FEE_OK;
 }
@@ -469,6 +551,9 @@ int Delete(char *relName, char *selAttr, int op,
 	RECID recid;
 	int i = 0;
 	char *buff;
+	ATTRDESCTYPE **index_attr_list;
+	int *index_fds;
+	int i_cnt = 0;
 
 	if (!isFileExist(relName)) {
 		printf("[Delte] the relation non-exist\n");
@@ -516,8 +601,24 @@ int Delete(char *relName, char *selAttr, int op,
 		}
 	}
 
+	index_attr_list = malloc(rel_desc.indexcnt * sizeof(ATTRDESCTYPE *));
+	index_fds = malloc(rel_desc.indexcnt * sizeof(int));
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (attr_list[i].indexed == 1) {
+			index_attr_list[i_cnt] = &attr_list[i];
+			index_fds[i_cnt] = AM_OpenIndex(relName,
+							attr_list[i].attrno);
+			i_cnt++;
+		}
+	}
+
 	recid = HF_FindNextRec(sd, buff);
 	while (HF_ValidRecId(hd, recid)) {
+		for (i = 0; i < i_cnt; i++) {
+			AM_DeleteEntry(index_fds[i], buff +
+					index_attr_list[i].offset, recid);
+		}
 		HF_DeleteRec(hd, recid);
 		recid = HF_FindNextRec(sd, buff);
 	}
@@ -528,14 +629,20 @@ int Delete(char *relName, char *selAttr, int op,
 		return FEE_HF;
 	}
 
+	for (i = 0; i < i_cnt; i++) {
+		AM_CloseIndex(index_fds[i]);
+	}
+
 	if (HF_CloseFile(hd) != HFE_OK) {
 		printf("[Delete] failed to close relation file\n");
 		FEerrno = FEE_HF;
 		return FEE_HF;
 	}
 
+	free(index_attr_list);
 	free(buff);
 	free(attr_list);
+	free(index_fds);
 
 	return FEE_OK;
 }
