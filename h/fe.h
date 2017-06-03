@@ -167,7 +167,7 @@ void FE_Init(void);			/* FE initialization		*/
 #define FEE_DATABASE_NONCONNECT	(-84)
 #define FEE_WRONG_ATTR_TYPE 	(-85)
 
-#define FE_NERRORS              (71)
+#define FE_NERRORS              (85)
 
 /*************/
 #define FEE_UNIX		(-100)
