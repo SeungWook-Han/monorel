@@ -157,7 +157,7 @@ void FE_Init(void);			/* FE initialization		*/
 #define FEE_NONEXISTDATABASE	(-76)
 #define FEE_NONEXISTTABLE	(-77)
 #define FEE_LOADFILEOPEN	(-78)
-
+#define FEE_NONEXISTATTR	(-79)
 
 #define FEE_INSERT_ATTR_NAME	(-80)
 #define FEE_DELETE_ATTR_NAME	(-81)

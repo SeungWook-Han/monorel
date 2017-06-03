@@ -10,6 +10,10 @@ cd ../hf
 make clean
 make
 
+cd ../am
+make clean
+make
+
 cd ../fe
 make clean
 make

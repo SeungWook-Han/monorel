@@ -232,6 +232,33 @@ void index_professor()
   printf("End index_professor ... \n");
 }
 
+void unindex_student()
+{
+  printf("Start un-index_student ... \n");
+  DBconnect(TESTDB);
+
+  if (DropIndex(STUDREL, "sname") != FEE_OK)
+    FE_PrintError("Problem dropping the studname index\n");
+
+  if (DropIndex(STUDREL, "age") != FEE_OK)
+    FE_PrintError("Problem dropping the age index\n");
+
+  DBclose(TESTDB);
+  printf("End un-index_student ... \n");
+}
+
+void unindex_professor()
+{
+  printf("Start un-index_professor ... \n");
+  DBconnect(TESTDB);
+
+  if (DropIndex(PROFREL, "pid") != FEE_OK)
+    FE_PrintError("Problem dropping the sid index\n");
+
+  DBclose(TESTDB);
+  printf("End un-index_professor ... \n");
+}
+
 /***********************************************/
 /* cleanup:                                    */
 /* Gets rid of files and directories generated */
@@ -381,19 +408,24 @@ int main(int argc, char *argv[])
   join_student_prof(NULL);
 
 
-/*
+
   printf(">>> Deleting students and professors ...\n");
   delete_student();
   delete_professor();
   show_table(STUDREL);
   show_table(PROFREL);
-*/
-/*
+
+
   printf(">>> Indexing / Joining students and professors ...\n");
   index_student();
   index_professor();
   join_student_prof("stud_prof");
   show_table("stud_prof");
+  show_catalogs();
+/*
+  printf(">>> Un-Indexing ...\n");
+  unindex_student();
+  unindex_professor();
   show_catalogs();
 */
 }

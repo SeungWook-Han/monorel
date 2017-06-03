@@ -8,6 +8,7 @@
 #include <string.h>
 #include "fe.h"
 #include "hf.h"
+#include "am.h"
 #include "minirel.h"
 #include "catalog.h"
 
@@ -43,7 +44,7 @@ void FE_Init(void)
 
 	relcatFd = attrcatFd = -1;
 	
-	HF_Init();
+	AM_Init();
 	return ;
 }
 
@@ -142,10 +143,10 @@ void DBcreate(char *dbname)
 	attr_cata_list[3].attrType = INT_TYPE;    attr_cata_list[3].attrLen = sizeof(int);
 	sprintf(attr_cata_list[3].attrName, "%s", "attrlen");
 	
-	attr_cata_list[4].attrType = INT_TYPE;    attr_cata_list[4].attrLen = sizeof(int);
+	attr_cata_list[4].attrType = TYPE_TYPE;    attr_cata_list[4].attrLen = sizeof(int);
 	sprintf(attr_cata_list[4].attrName, "%s", "attrtype");
 	
-	attr_cata_list[5].attrType = INT_TYPE;    attr_cata_list[5].attrLen = sizeof(int);
+	attr_cata_list[5].attrType = BOOL_TYPE;    attr_cata_list[5].attrLen = sizeof(int);
 	sprintf(attr_cata_list[5].attrName, "%s", "indexed");
 	
 	attr_cata_list[6].attrType = INT_TYPE;    attr_cata_list[6].attrLen = sizeof(int);
@@ -353,9 +354,96 @@ int DestroyTable(char *relName)
 
 int BuildIndex(char *relName, char *attrName)
 {
-	/* 1. Call AM_Create */
-	/* 2. Update relation meta data */
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	int idx_attr = -1, i = 0;
+	int am_fd = 0, fd = 0;
+	RECID rel_recid, recid;
+	RECID *attr_recids;
+	char *rel_buff, *attr_buff, *idx_buff;
+	int indexcnt = 0, indexed = 0;
+	int ret = -1;
+
+	Search_RelCatalog(relName, &rel_desc, &rel_recid);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	attr_recids = calloc(rel_desc.attrcnt, sizeof(RECID));
+	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
+
+	rel_buff = malloc(RELDESCSIZE);
+	attr_buff = malloc(ATTRDESCSIZE);
+	idx_buff = malloc(rel_desc.relwid);
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (!strcmp(attr_list[i].attrname, attrName)) {
+			idx_attr = i;
+		}
+	}
+
+	if (idx_attr == -1) {
+		printf("[BuildIndex] The attribute not exist\n");
+		FEerrno = FEE_NONEXISTATTR;
+		return FEE_NONEXISTATTR;
+	}
+
+	/* 2. Update relation and attribute record */
+	if ((ret = HF_GetThisRec(relcatFd, rel_recid, rel_buff)) < 0) {
+		printf("[Build] GetThisRecord error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;
+	}
+	
+	indexcnt = *((int *)(rel_buff + relCatOffset(indexcnt)));
+	printf("[Build] indexcnt: %d\n", indexcnt);
+	*((int *)(rel_buff + relCatOffset(indexcnt))) = indexcnt + 1;
+
+	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
+		printf("[Build] DeleteRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;	
+	}
+	
+	HF_InsertRec(relcatFd, rel_buff);
+
+
+	if ((ret = HF_GetThisRec(attrcatFd, attr_recids[idx_attr], attr_buff)) < 0) {
+		printf("[Build] GetThisRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;		
+	}
+
+	indexed = *((int *)(attr_buff + attrCatOffset(indexed)));
+	printf("[Build] indexed: %d\n", indexed);
+	*((int *)(attr_buff + attrCatOffset(indexed))) = 1;
+
+	if ((ret = HF_DeleteRec(attrcatFd, attr_recids[idx_attr])) < 0) {
+		printf("[Build] DeleteRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;
+	}
+
+	HF_InsertRec(attrcatFd, attr_buff);
+	
 	/* 3. AM_Insert pre-exist records */
+	AM_CreateIndex(relName, attr_list[idx_attr].attrno, 
+				attr_list[idx_attr].attrtype,
+				attr_list[idx_attr].attrlen, FALSE);
+
+	am_fd = AM_OpenIndex(relName, attr_list[idx_attr].attrno);
+	fd = HF_OpenFile(relName);
+	recid = HF_GetFirstRec(fd, idx_buff);
+	while (HF_ValidRecId(fd, recid)) {
+		AM_InsertEntry(am_fd, idx_buff + attr_list[idx_attr].offset, recid);
+		recid = HF_GetNextRec(fd, recid, idx_buff);
+	}
+
+	AM_CloseIndex(am_fd);
+	HF_CloseFile(fd);
+	free(attr_list);
+	free(attr_recids);
+	free(idx_buff);
+	free(attr_buff);
+	free(rel_buff);
+
 	return FEE_OK;
 }
 
@@ -363,6 +451,80 @@ int DropIndex(char *relName, char *attrName)
 {
 	/* 1. Call AM_Destroy */
 	/* 2. Update relation meta data */
+	RELDESCTYPE rel_desc;
+	ATTRDESCTYPE *attr_list;
+	int idx_attr = -1, i = 0;
+	int fd = 0;
+	RECID rel_recid;
+	RECID *attr_recids;
+	char *rel_buff, *attr_buff;
+	int indexcnt = 0, indexed = 0;
+	int ret = -1;
+
+	Search_RelCatalog(relName, &rel_desc, &rel_recid);
+	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
+	attr_recids = calloc(rel_desc.attrcnt, sizeof(RECID));
+	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
+
+	rel_buff = malloc(RELDESCSIZE);
+	attr_buff = malloc(ATTRDESCSIZE);
+
+	for (i = 0; i < rel_desc.attrcnt; i++) {
+		if (!strcmp(attr_list[i].attrname, attrName)) {
+			idx_attr = i;
+		}
+	}
+
+	if (idx_attr == -1) {
+		printf("[DropIndex] The attribute not exist\n");
+		FEerrno = FEE_NONEXISTATTR;
+		return FEE_NONEXISTATTR;
+	}
+
+	/* 2. Update relation and attribute record */
+	if ((ret = HF_GetThisRec(relcatFd, rel_recid, rel_buff)) < 0) {
+		printf("[Drop] GetThisRecord error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;
+	}
+	
+	indexcnt = *((int *)(rel_buff + relCatOffset(indexcnt)));
+	printf("[Drop] indexcnt: %d\n", indexcnt);
+	*((int *)(rel_buff + relCatOffset(indexcnt))) = indexcnt - 1;
+
+	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
+		printf("[Drop] DeleteRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;	
+	}
+	
+	HF_InsertRec(relcatFd, rel_buff);
+
+
+	if ((ret = HF_GetThisRec(attrcatFd, attr_recids[idx_attr], attr_buff)) < 0) {
+		printf("[Drop] GetThisRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;		
+	}
+
+	indexed = *((int *)(attr_buff + attrCatOffset(indexed)));
+	printf("[Drop] indexed: %d\n", indexed);
+	*((int *)(attr_buff + attrCatOffset(indexed))) = 0;
+
+	if ((ret = HF_DeleteRec(attrcatFd, attr_recids[idx_attr])) < 0) {
+		printf("[Drop] DeleteRec error\n");
+		FEerrno = FEE_HF;
+		return FEE_HF;
+	}
+
+	HF_InsertRec(attrcatFd, attr_buff);
+	AM_DestroyIndex(relName, attr_list[idx_attr].attrno);
+
+	free(rel_buff);
+	free(attr_buff);
+	free(attr_list);
+	free(attr_recids);
+	
 	return FEE_OK;
 }
 
@@ -417,7 +579,7 @@ int LoadTable(char *relName, char *fileName)
 		recid = HF_InsertRec(fd_rel, buff);
 		for (i = 0; i < i_cnt; i) {
 			AM_InsertEntry(index_fds[i], buff + 
-					index_attr_list[i].offset, recid);
+					index_attr_list[i]->offset, recid);
 		}
 	}
 
@@ -521,7 +683,7 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 
 	for (i = 0; i < i_cnt; i++) {
 		AM_InsertEntry(index_fds[i], buff + 
-				index_attr_list[i].offset, recid);
+				index_attr_list[i]->offset, recid);
 	}
 
 	for (i = 0; i < i_cnt; i++) {
@@ -617,7 +779,7 @@ int Delete(char *relName, char *selAttr, int op,
 	while (HF_ValidRecId(hd, recid)) {
 		for (i = 0; i < i_cnt; i++) {
 			AM_DeleteEntry(index_fds[i], buff +
-					index_attr_list[i].offset, recid);
+					index_attr_list[i]->offset, recid);
 		}
 		HF_DeleteRec(hd, recid);
 		recid = HF_FindNextRec(sd, buff);
@@ -970,10 +1132,17 @@ int HelpTable(char *relName)
 
 		for (i = 0; i < rel_desc.attrcnt; i++) {
 			/* attrname offset length type indexed attrno */
-			printf("| %12s | %12d | %12d | %12d | %12d | %12d |\n", 
+			printf("| %12s | %12d | %12d | %12s | %12s | %12d |\n", 
 				attr_list[i].attrname, attr_list[i].offset,
-				attr_list[i].attrlen, attr_list[i].attrtype,
-				attr_list[i].indexed, attr_list[i].attrno);
+				attr_list[i].attrlen, 
+				attr_list[i].attrtype == INT_TYPE ? "Integer" :
+				attr_list[i].attrtype == REAL_TYPE ? "Real" :
+				attr_list[i].attrtype == STRING_TYPE ? "String" :
+				attr_list[i].attrtype == BOOL_TYPE ? "Bool" : "Integer",
+				/* attr_list[i].attrtype, */
+				attr_list[i].indexed == 0 ? "No" : "Yes",
+				/* attr_list[i].indexed, */
+				attr_list[i].attrno);
 		}
 
 		for (i = 0; i < nr_attr_field; i++) {
@@ -1073,6 +1242,22 @@ int PrintTable(char *relName)
 				break;
 			case STRING_TYPE:
 				printf("| %12s ", (char*)data_buff);
+				data_buff += attr_list[i].attrlen;
+				break;
+			case BOOL_TYPE:
+				printf("| %12s ", *((int*)data_buff) == 1 ?
+								"Yes" : "No");
+				data_buff += attr_list[i].attrlen;
+				break;
+			case TYPE_TYPE:
+				printf("| %12s ", *((int*)data_buff) == INT_TYPE ?
+						"Integer" : 
+						*((int*)data_buff) == REAL_TYPE ? 
+						"Real" :
+						*((int*)data_buff) == STRING_TYPE ?
+						"String" :
+						*((int*)data_buff) == BOOL_TYPE ?
+						"Bool" : "Integer");
 				data_buff += attr_list[i].attrlen;
 				break;
 			default:
@@ -1178,16 +1363,6 @@ int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECI
 	}
 
 	qsort(attr_list, attrcnt, ATTRDESCSIZE, qsort_compare);
-	return 0;
-}
-
-int BuildIndex(char *relName, char *attrName)
-{
-	return 0;
-}
-
-int DropIndex(char *relname, char *attrName)
-{
 	return 0;
 }
 
