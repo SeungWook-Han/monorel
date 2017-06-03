@@ -393,7 +393,6 @@ int BuildIndex(char *relName, char *attrName)
 	}
 	
 	indexcnt = *((int *)(rel_buff + relCatOffset(indexcnt)));
-	printf("[Build] indexcnt: %d\n", indexcnt);
 	*((int *)(rel_buff + relCatOffset(indexcnt))) = indexcnt + 1;
 
 	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
@@ -412,7 +411,6 @@ int BuildIndex(char *relName, char *attrName)
 	}
 
 	indexed = *((int *)(attr_buff + attrCatOffset(indexed)));
-	printf("[Build] indexed: %d\n", indexed);
 	*((int *)(attr_buff + attrCatOffset(indexed))) = 1;
 
 	if ((ret = HF_DeleteRec(attrcatFd, attr_recids[idx_attr])) < 0) {
@@ -489,7 +487,6 @@ int DropIndex(char *relName, char *attrName)
 	}
 	
 	indexcnt = *((int *)(rel_buff + relCatOffset(indexcnt)));
-	printf("[Drop] indexcnt: %d\n", indexcnt);
 	*((int *)(rel_buff + relCatOffset(indexcnt))) = indexcnt - 1;
 
 	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
@@ -508,7 +505,6 @@ int DropIndex(char *relName, char *attrName)
 	}
 
 	indexed = *((int *)(attr_buff + attrCatOffset(indexed)));
-	printf("[Drop] indexed: %d\n", indexed);
 	*((int *)(attr_buff + attrCatOffset(indexed))) = 0;
 
 	if ((ret = HF_DeleteRec(attrcatFd, attr_recids[idx_attr])) < 0) {
@@ -1033,7 +1029,7 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 	in_buff2 = malloc(rel_desc2.relwid);
 	out_buff = malloc(rel_desc1.relwid + rel_desc2.relwid);
 
-	printf("idx1 : %d, idx2 : %d\n", attr_idx1, attr_idx2);
+	/* printf("idx1 : %d, idx2 : %d\n", attr_idx1, attr_idx2); */
 
 	recid1 = HF_FindNextRec(sd_input1, in_buff1);
 	while (HF_ValidRecId(fd_input1, recid1)) {
