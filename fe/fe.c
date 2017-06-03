@@ -18,7 +18,8 @@ int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *rec
 int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECID *recid);
 
 char data_dir[STR_SIZE];
-int fd_cat_rel, fd_cat_attr;
+int relcatFd, attrcatFd;
+int FEerrno;
 
 /* Checking the file is exist in present directory 
  * @return: >= 0 (File exist)
@@ -36,10 +37,12 @@ void FE_Init(void)
 {
 	if (!getcwd(data_dir, STR_SIZE)) {
 		printf("[FE_Init] Fail to get pwd\n");
-		exit(1);
+		FEerrno = FEE_INIT;
+		return ;
 	}
 
-	fd_cat_rel = fd_cat_attr = -1;
+	relcatFd = attrcatFd = -1;
+	
 	HF_Init();
 	return ;
 }
@@ -58,39 +61,46 @@ void DBcreate(char *dbname)
 	if (isFileExist(dbname)) {
 		printf("%s\n", dbname);
 		printf("[DBcreate] dbname database is already exist\n");
-		exit(1);
+		FEerrno = FEE_EXISTDATABASE;
+		return ;
 	}
 
 	if ((ret = mkdir(dbname, 0777)) < 0) {
 		printf("[DBCreate] failed to create database directory\n");
-		exit(1);
+		FEerrno = FEE_EXISTDATABASE;
+		return ;
 	}
 
 	sprintf(db_location, "%s/%s", data_dir, dbname);	
 	if (chdir(db_location)) {
 		printf("%s\n", db_location);
 		printf("[DBCreate] failed to change pwd\n");
-		exit(1);
+		FEerrno = FEE_FAILCD;
+		return ;
 	}
 
 	if (HF_CreateFile(RELCATNAME, RELDESCSIZE)) {
 		printf("[DBCreate] failed to create relcat file\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
 	if (HF_CreateFile(ATTRCATNAME, ATTRDESCSIZE) != 0) {
 		printf("[DBCreate] failed to create attribute file\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
-	if ((fd_cat_rel = HF_OpenFile(RELCATNAME)) < 0) {
+	if ((relcatFd = HF_OpenFile(RELCATNAME)) < 0) {
 		printf("[DBCreate] failed to open relcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
-	if ((fd_cat_attr = HF_OpenFile(ATTRCATNAME)) < 0) {
+	if ((attrcatFd = HF_OpenFile(ATTRCATNAME)) < 0) {
 		printf("[DBCreate] failed to open attrcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
 	/* Relation table (Attribute name will be omitted) */
@@ -152,22 +162,25 @@ void DBcreate(char *dbname)
 	
 	free(attr_cata_list);
 
-	if (HF_CloseFile(fd_cat_rel)) {
+	if (HF_CloseFile(relcatFd)) {
 		printf("[DBCreate] failed to close relcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
-	if (HF_CloseFile(fd_cat_attr)) {
+	if (HF_CloseFile(attrcatFd)) {
 		printf("[DBCreate] failed to close relcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return ;
 	}
 
 	if (chdir(data_dir)) {
 		printf("[DBCreate] failed to change pwd\n");
-		exit(1);
+		FEerrno = FEE_FAILCD;
+		return ;
 	}
 
-	fd_cat_rel = fd_cat_attr = -1;
+	relcatFd = attrcatFd = -1;
 }
 
 void DBdestroy(char *dbname)
@@ -200,30 +213,32 @@ void DBconnect(char *dbname)
 	
 	if ((ret = isFileExist(db_location)) < 0) {
 		printf("[DBconnect] Trying to connect un-exist database\n");
-		exit(1);
+		FEerrno = FEE_NONEXISTDATABASE;
+		return ;
 	}
 	
 	if (chdir(db_location)) {
 		printf("[DBConnect] failed to change pwd\n");
-		exit(1);
+		FEerrno = FEE_FAILCD;
+		return ;
 	}
 
-	/* Opening attribute table and relation table? */
-	fd_cat_rel = HF_OpenFile(RELCATNAME);
-	fd_cat_attr = HF_OpenFile(ATTRCATNAME);
+	relcatFd = HF_OpenFile(RELCATNAME);
+	attrcatFd = HF_OpenFile(ATTRCATNAME);
 }
 
 void DBclose(char *dbname)
 {
 	if (chdir(data_dir)) {
 		printf("[DBConnect] failed to change pwd\n");
-		exit(1);
+		FEerrno = FEE_FAILCD;
+		return ;
 	}
 
 	/* Closing attribute table and relation table? */
-	HF_CloseFile(fd_cat_rel);
-	HF_CloseFile(fd_cat_attr);
-	fd_cat_rel = fd_cat_attr = -1;
+	HF_CloseFile(relcatFd);
+	HF_CloseFile(attrcatFd);
+	relcatFd = attrcatFd = -1;
 }
 
 int _CreateTable(char *relName,
@@ -241,8 +256,8 @@ int _CreateTable(char *relName,
 	rel_desc.relwid = recSize;
 	rel_desc.attrcnt = numAttrs;
 	rel_desc.indexcnt = 0;
-	sprintf(rel_desc.primattr, "%s", "none");
-	HF_InsertRec(fd_cat_rel, (char*)(&rel_desc));
+	sprintf(rel_desc.primattr, "%s", attrs[0].attrName);
+	HF_InsertRec(relcatFd, (char*)(&rel_desc));
 
 	for (i = 0; i < numAttrs; i++) {
 		memcpy(attr_desc.relname, relName, MAXNAME);
@@ -253,7 +268,7 @@ int _CreateTable(char *relName,
 		attr_desc.attrtype = attrs[i].attrType;
 		attr_desc.indexed = FALSE;
 		attr_desc.attrno = i;
-		HF_InsertRec(fd_cat_attr, (char*)(&attr_desc));
+		HF_InsertRec(attrcatFd, (char*)(&attr_desc));
 	}
 
 	return FEE_OK;
@@ -278,7 +293,8 @@ int CreateTable(char *relName,		/* name	of relation to create	   */
 
 	if ((hf_fd = HF_CreateFile(relName, recSize)) < 0) {
 		printf("[CreateTable] failed to HF_CreateFile\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 	
 	return _CreateTable(relName, numAttrs, attrs, primAttrName, recSize);
@@ -301,15 +317,17 @@ int DestroyTable(char *relName)
 
 	Search_AttrCatalog(relName, rel_desc.attrcnt, attr_list, attr_recids);
 	
-	if ((ret = HF_DeleteRec(fd_cat_rel, rel_recid)) < 0) {
+	if ((ret = HF_DeleteRec(relcatFd, rel_recid)) < 0) {
 		printf("[DestroyTable] failed to Delete record in rel catalog\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	for (i = 0; i < rel_desc.attrcnt; i++) {
-		if ((ret = HF_DeleteRec(fd_cat_attr, attr_recids[i])) < 0) {
+		if ((ret = HF_DeleteRec(attrcatFd, attr_recids[i])) < 0) {
 			printf("[DestroyTable] failed delete record in attr catalog\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 	}
 
@@ -318,7 +336,8 @@ int DestroyTable(char *relName)
 
 	if ((ret = HF_DestroyFile(relName)) != HFE_OK) {
 		printf("[DestroyTable] failure from hf_destroyfile\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;	
 	}
 
 	return FEE_OK;
@@ -335,7 +354,8 @@ int LoadTable(char *relName, char *fileName)
 	/* TODO: Indexing Task*/
 	if (!isFileExist(relName) || !isFileExist(fileName)) {
 		printf("[LoadTable] relation file and data file not exist \n");
-		exit(1);
+		FEerrno = FEE_NONEXISTTABLE;
+		return FEE_NONEXISTTABLE;
 	}
 	
 	Search_RelCatalog(relName, &rel_desc, NULL);
@@ -346,12 +366,14 @@ int LoadTable(char *relName, char *fileName)
 	
 	if ((fd_rel = HF_OpenFile(relName)) < 0) {
 		printf("[LoadTable] failed to open relcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 	
 	if ((fd = open(fileName, O_RDWR)) < 2) {
 		printf("[LoadTable] failed to open data file\n");
-		exit(1);
+		FEerrno = FEE_LOADFILEOPEN;
+		return FEE_LOADFILEOPEN;
 	}
 
 	while ((ret = read(fd, buff, rel_desc.relwid)) != 0) {
@@ -360,7 +382,8 @@ int LoadTable(char *relName, char *fileName)
 
 	if (HF_CloseFile(fd_rel)) {
 		printf("[LoadTable] failed to close relation\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	free(attr_list);
@@ -381,7 +404,8 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 	/* TODO: Indexing Task */
 	if (!isFileExist(relName)) {
 		printf("[Insert] failed to open relation file\n");
-		exit(1);
+		FEerrno = FEE_NONEXISTTABLE;
+		return FEE_NONEXISTTABLE;
 	}
 
 	Search_RelCatalog(relName, &rel_desc, NULL);
@@ -398,7 +422,8 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 	
 	if ((fd_rel = HF_OpenFile(relName)) < 0) {
 		printf("[Insert] failed to open relcat\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	for (i = 0; i < numAttrs; i++) {
@@ -414,7 +439,8 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 		if (find_flag == 0) {
 			printf("[Insert] Wrong attribute name %s\n", 
 							values[i].attrName);
-			exit(1);
+			FEerrno = FEE_INSERT_ATTR_NAME;
+			return FEE_INSERT_ATTR_NAME;
 		}
 	
 		memcpy(buff + attr_list[j].offset, values[i].value, values[i].valLength);
@@ -424,7 +450,8 @@ int Insert(char *relName, int numAttrs, ATTR_VAL values[])
 
 	if (HF_CloseFile(fd_rel)) {
 		printf("[Insert] failed to close table\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	free(buff);
@@ -445,12 +472,14 @@ int Delete(char *relName, char *selAttr, int op,
 
 	if (!isFileExist(relName)) {
 		printf("[Delte] the relation non-exist\n");
-		exit(1);
+		FEerrno = FEE_NONEXISTTABLE;
+		return FEE_NONEXISTTABLE;
 	}
 
 	if ((hd = HF_OpenFile(relName)) < 0) {
 		printf("[Delte] failed to open relation\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	Search_RelCatalog(relName, &rel_desc, NULL);
@@ -468,19 +497,22 @@ int Delete(char *relName, char *selAttr, int op,
 	
 		if (i == rel_desc.attrcnt) {
 			printf("[Delete] selAttr is not exist in relName relation\n");
-			exit(1);
+			FEerrno = FEE_DELETE_ATTR_NAME;
+			return FEE_DELETE_ATTR_NAME;
 		}
 
 		if ((sd = HF_OpenFileScan(hd, valType, valLength, 
 					attr_list[i].offset, op, value)) < 0) {
 			printf("[Delete] problem in opening file scan\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 
 	} else {
 		if ((sd = HF_OpenFileScan(hd, 0, 0, 0, 0, NULL)) < 0) {
 			printf("[Delete] problem in opening null file scan\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;	
 		}
 	}
 
@@ -492,12 +524,14 @@ int Delete(char *relName, char *selAttr, int op,
 
 	if (HF_CloseFileScan(sd) != HFE_OK) {
 		printf("[Delete] failed to close scan\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	if (HF_CloseFile(hd) != HFE_OK) {
 		printf("[Delete] failed to close relation file\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	free(buff);
@@ -557,7 +591,8 @@ int Select(char *srcRelName, char *selAttr, int op,
 
 		if (j == rel_desc.attrcnt) {
 			printf("[Select] Can not find projAttrs in source relation\n");
-			exit(1);
+			FEerrno = FEE_SELECT_ATTR_NAME;
+			return FEE_SELECT_ATTR_NAME;
 		}
 	}
 
@@ -568,7 +603,8 @@ int Select(char *srcRelName, char *selAttr, int op,
 	/* Now we guarantee the dest relation is exist */
 	if ((fd_dest = HF_OpenFile(resRelName)) < 0) {
 		printf("[Select] failed to open relation\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	/* Retrieving the records */
@@ -577,7 +613,8 @@ int Select(char *srcRelName, char *selAttr, int op,
 
 	if ((fd_src = HF_OpenFile(srcRelName)) < 0) {
 		printf("[Select] failed to open source relation\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 
 	/* Find the ATTRDESCTYPE of selAttr in attr_list */
@@ -592,19 +629,22 @@ int Select(char *srcRelName, char *selAttr, int op,
 		if (i == rel_desc.attrcnt) {
 			printf("[Select] Can not find selAttr [%s] in src relation\n",
 										selAttr);
-			exit(1);
+			FEerrno = FEE_SELECT_ATTR_NAME;
+			return FEE_SELECT_ATTR_NAME;
 		}
 		
 		if ((sd = HF_OpenFileScan(fd_src, valType, valLength, 
 					attr_list[cmp_attr_idx].offset,
 					op, value)) < 0) {
 			printf("[Select] failed to open file scan\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 	} else {
 		if ((sd = HF_OpenFileScan(fd_src, 0, 0, 0, 0, NULL)) < 0) {
 			printf("[Select] failed to open default file scan\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 	}
 
@@ -707,7 +747,8 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 
 	if (attr_idx1 == -1 || attr_idx2 == -1) {
 		printf("[Join] Can not find join attr in each relation\n");
-		exit(1);
+		FEerrno = FEE_JOIN_ATTR_NAME;
+		return FEE_JOIN_ATTR_NAME;
 	}
 
 	if (!isFileExist(resRelName)) {
@@ -852,9 +893,10 @@ int PrintTable(char *relName)
 	char *data_buff;
 	int count = 0;
 
-	if (fd_cat_attr == fd_cat_rel == -1) {
+	if (attrcatFd == relcatFd == -1) {
 		printf("[PrintTable] database is not connected\n");
-		exit(1);
+		FEerrno = FEE_DATABASE_NONCONNECT;
+		return FEE_DATABASE_NONCONNECT;
 	}
 
 	Search_RelCatalog(relName, &rel_desc, NULL);
@@ -887,16 +929,17 @@ int PrintTable(char *relName)
 
 	/* Print Data */
 	if (!strcmp(relName, RELCATNAME)) {
-		fd_rel = fd_cat_rel;
+		fd_rel = relcatFd;
 	} else if (!strcmp(relName, ATTRCATNAME)) {
-		fd_rel = fd_cat_attr;
+		fd_rel = attrcatFd;
 	} else {
 		fd_rel = HF_OpenFile(relName);	
 	}
 	
 	if (fd_rel < 0) {
 		printf("[Printable] failed to open the relation named relName\n");
-		exit(1);
+		FEerrno = FEE_HF;
+		return FEE_HF;
 	}
 	
 	data_buff = malloc(sizeof(char) * rel_desc.relwid);
@@ -905,9 +948,10 @@ int PrintTable(char *relName)
 	     HF_ValidRecId(fd_rel, next_recid);
 	     next_recid = HF_GetNextRec(fd_rel, next_recid, data_buff)) {
 
-		if (!HF_ValidRecId(fd_cat_attr, next_recid)) {
+		if (!HF_ValidRecId(attrcatFd, next_recid)) {
 			printf("[PrintTable]: No first record in target relation\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 
 		for (i = 0; i < rel_desc.attrcnt; i++) {
@@ -925,8 +969,9 @@ int PrintTable(char *relName)
 				data_buff += attr_list[i].attrlen;
 				break;
 			default:
-				printf("[PrintTable] Error\n");
-				exit(1);
+				printf("[PrintTable] Wrong attr type\n");
+				FEerrno = FEE_WRONG_ATTR_TYPE;
+				return FEE_WRONG_ATTR_TYPE;
 			}
 		}
 		printf("|\n");
@@ -955,13 +1000,14 @@ int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *rec
 {
 	RECID next_recid;
 	
-	for (next_recid = HF_GetFirstRec(fd_cat_rel, (char *)(rel_desc));
-	     HF_ValidRecId(fd_cat_rel, next_recid);
-	     next_recid = HF_GetNextRec(fd_cat_rel, next_recid, (char *)(rel_desc))) {
+	for (next_recid = HF_GetFirstRec(relcatFd, (char *)(rel_desc));
+	     HF_ValidRecId(relcatFd, next_recid);
+	     next_recid = HF_GetNextRec(relcatFd, next_recid, (char *)(rel_desc))) {
 
-		if (!HF_ValidRecId(fd_cat_rel, next_recid)) {
+		if (!HF_ValidRecId(relcatFd, next_recid)) {
 			printf("[PrintTable]: No first record in relation catalog\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 
 		if (!strcmp(relName, rel_desc->relname)) { 
@@ -969,9 +1015,10 @@ int Search_RelCatalog(char *relName, struct _relation_desc *rel_desc, RECID *rec
 		}
 	}
 
-	if (!HF_ValidRecId(fd_cat_rel, next_recid)) {
+	if (!HF_ValidRecId(relcatFd, next_recid)) {
 		printf("[PrintTable]: Trying to print non-exist table\n");
-		exit(1);
+		FEerrno = FEE_NONEXISTTABLE;
+		return FEE_NONEXISTTABLE;
 	}
 
 	if (recid != NULL) {
@@ -997,13 +1044,14 @@ int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECI
 	RECID next_recid;
 	int count = 0;
 	struct _attribute_desc attr_desc;
-	for (next_recid = HF_GetFirstRec(fd_cat_attr, (char *)(&attr_desc));
-	     HF_ValidRecId(fd_cat_attr, next_recid);
-	     next_recid = HF_GetNextRec(fd_cat_attr, next_recid, (char *)(&attr_desc))) {
+	for (next_recid = HF_GetFirstRec(attrcatFd, (char *)(&attr_desc));
+	     HF_ValidRecId(attrcatFd, next_recid);
+	     next_recid = HF_GetNextRec(attrcatFd, next_recid, (char *)(&attr_desc))) {
 
-		if (!HF_ValidRecId(fd_cat_attr, next_recid)) {
+		if (!HF_ValidRecId(attrcatFd, next_recid)) {
 			printf("[PrintTable]: No first record in relation catalog\n");
-			exit(1);
+			FEerrno = FEE_HF;
+			return FEE_HF;
 		}
 
 		if (!strcmp(relName, attr_desc.relname)) {
@@ -1017,8 +1065,9 @@ int Search_AttrCatalog(char *relName, int attrcnt, ATTRDESCTYPE *attr_list, RECI
 	}
 
 	if (count != attrcnt) {
-		printf("[PrintTable]: Can not find all attributes data in attr catalog\n");
-		exit(1);
+		printf("[PrintTable]: Can not find attributes in attr catalog\n");
+		FEerrno = FEE_WRONG_ATTR_TYPE;
+		return FEE_WRONG_ATTR_TYPE;
 	}
 
 	qsort(attr_list, attrcnt, ATTRDESCSIZE, qsort_compare);

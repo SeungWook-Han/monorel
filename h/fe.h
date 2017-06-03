@@ -149,6 +149,24 @@ void FE_Init(void);			/* FE initialization		*/
 #define FEE_INVALIDSCANDESC     (-70)
 #define FEE_INVALIDOP           (-71)
 
+/* New define */
+#define FEE_EXISTTABLE		(-72)
+#define FEE_EXISTDATABASE	(-73)
+#define FEE_FAILCD		(-74)
+#define FEE_INIT		(-75)
+#define FEE_NONEXISTDATABASE	(-76)
+#define FEE_NONEXISTTABLE	(-77)
+#define FEE_LOADFILEOPEN	(-78)
+
+
+#define FEE_INSERT_ATTR_NAME	(-80)
+#define FEE_DELETE_ATTR_NAME	(-81)
+#define FEE_SELECT_ATTR_NAME	(-82)
+#define FEE_JOIN_ATTR_NAME	(-83)
+
+#define FEE_DATABASE_NONCONNECT	(-84)
+#define FEE_WRONG_ATTR_TYPE 	(-85)
+
 #define FE_NERRORS              (71)
 
 /*************/
