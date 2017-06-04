@@ -189,6 +189,12 @@ void DBdestroy(char *dbname)
 	char db_location[STR_SIZE];
 	char file_name[STR_SIZE];
 	int ret = 0;
+	
+	if (relcatFd == -1 || attrcatFd == -1) {
+		printf("[DBdestroy] disconnect any database for destroy\n");
+		return ;
+	}
+	
 	sprintf(db_location, "%s/%s", data_dir, dbname);
 	if(isFileExist(db_location)) {
 		DIR *dir;
