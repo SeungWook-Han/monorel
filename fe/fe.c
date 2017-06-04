@@ -191,7 +191,7 @@ void DBdestroy(char *dbname)
 	int ret = 0;
 	
 	if (relcatFd == -1 || attrcatFd == -1) {
-		printf("[DBdestroy] disconnect any database for destroy\n");
+		printf("[DBdestroy] disconnect any db for destroy\n");
 		return ;
 	}
 	
