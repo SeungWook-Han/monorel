@@ -178,8 +178,11 @@ int HF_OpenFile(char *fileName)
 		printf("HF OpenFile: Fail to read header info from file\n");
 		return HFE_HEADER_READ;
 	}
-
-	/* printf("nr_pages: %d\n", alloc_entry->header.nr_pages); */
+	/*
+	printf("HF_OpenFile(nr_pages) %s(%d)\n", 
+			fileName,
+			alloc_entry->header.nr_pages);
+	*/
 
 	return hf_fd;
 }
@@ -363,14 +366,17 @@ RECID HF_GetFirstRec(int HFfd, char *record)
 	if (nr_pages == 0) {
 		HFerrno = HFE_EOF;
 		rec_id.recnum = table_entry->header.nr_rec;
-		printf("HF_GetFirstRec: No pages in file\n");
+		/* printf("HF_GetFirstRec: No pages in file\n"); */
 		return rec_id;
 	}
 
 	for (i = 0; i < nr_pages; i++) {
 		/* Pinning */
+	/*		printf("test!! nr_pages: %d\n", nr_pages); */
 		PF_GetThisPage(table_entry->pf_fd, 
 				i + HF_DATA_PAGE_OFFSET, &pagebuf);
+	/*		printf("test!! before\n"); */
+
 		HF_ReadPageFormat(&format, pagebuf);
 
 		for (j = 0; j < table_entry->header.nr_rec; j++) {

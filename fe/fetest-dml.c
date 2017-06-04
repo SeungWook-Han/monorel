@@ -276,7 +276,6 @@ void delete_student()
   float gpaval = 40.;
 
   printf("Start deleting students ... \n");
-  printf("Delete record less than %f\n", gpaval);
   DBconnect(TESTDB);
 
   if (Delete(STUDREL,"gpa",LT_OP,REAL_TYPE,

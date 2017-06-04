@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include "minirel.h"
 #include "fe.h"
-/* #include "am.h" */
+#include "am.h"
 #include "hf.h"
 #include "catalog.h"
 
@@ -248,24 +248,24 @@ int main(int argc, char *argv[])
   create_student();
   create_professor();
   show_catalogs();
-
+  
   printf(">>> Indexing and loading students ...\n");
-  /*index_student(); */
+  index_student(); 
   load_student();
   show_table(STUDREL);
-  DBclose(TESTDB);
 
+  DBclose(TESTDB);
   DBconnect(TESTDB);
   show_catalogs();
 
   printf(">>> Loading and indexing professors ...\n");
   load_professor();
-  /* index_professor(); */
+  index_professor();
   show_table(PROFREL);
-
+  
   printf(">>> Dropping indexes of students and professors ...\n");
-  /* dropindex_student(); */
-  /* dropindex_professor(); */
+  dropindex_student();
+  dropindex_professor();
   show_catalogs();
 
   printf(">>> Destroying tables of students and professors ...\n");
@@ -274,5 +274,7 @@ int main(int argc, char *argv[])
   show_catalogs();
 
   DBclose(TESTDB);
+
+  return 0;
 }
 

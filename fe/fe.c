@@ -190,11 +190,10 @@ void DBdestroy(char *dbname)
 	char file_name[STR_SIZE];
 	int ret = 0;
 	
-	if (relcatFd == -1 || attrcatFd == -1) {
+	if (relcatFd != -1 || attrcatFd != -1) {
 		printf("[DBdestroy] disconnect any db for destroy\n");
 		return ;
-	}
-	
+	}	
 	sprintf(db_location, "%s/%s", data_dir, dbname);
 	if(isFileExist(db_location)) {
 		DIR *dir;
@@ -303,7 +302,7 @@ int CreateTable(char *relName,		/* name	of relation to create	   */
 		FEerrno = FEE_HF;
 		return FEE_HF;
 	}
-	
+
 	return _CreateTable(relName, numAttrs, attrs, primAttrName, recSize);
 }
 
@@ -370,6 +369,9 @@ int BuildIndex(char *relName, char *attrName)
 	int indexcnt = 0, indexed = 0;
 	int ret = -1;
 
+fd = HF_OpenFile(relName);
+HF_CloseFile(fd);
+
 	Search_RelCatalog(relName, &rel_desc, &rel_recid);
 	attr_list = calloc(rel_desc.attrcnt, ATTRDESCSIZE);
 	attr_recids = calloc(rel_desc.attrcnt, sizeof(RECID));
@@ -426,14 +428,15 @@ int BuildIndex(char *relName, char *attrName)
 	}
 
 	HF_InsertRec(attrcatFd, attr_buff);
-	
+
 	/* 3. AM_Insert pre-exist records */
 	AM_CreateIndex(relName, attr_list[idx_attr].attrno, 
 				attr_list[idx_attr].attrtype,
 				attr_list[idx_attr].attrlen, FALSE);
 
-	am_fd = AM_OpenIndex(relName, attr_list[idx_attr].attrno);
 	fd = HF_OpenFile(relName);
+	am_fd = AM_OpenIndex(relName, attr_list[idx_attr].attrno);
+
 	recid = HF_GetFirstRec(fd, idx_buff);
 	while (HF_ValidRecId(fd, recid)) {
 		AM_InsertEntry(am_fd, idx_buff + attr_list[idx_attr].offset, recid);
@@ -442,12 +445,13 @@ int BuildIndex(char *relName, char *attrName)
 
 	AM_CloseIndex(am_fd);
 	HF_CloseFile(fd);
+	
 	free(attr_list);
 	free(attr_recids);
 	free(idx_buff);
 	free(attr_buff);
 	free(rel_buff);
-
+	
 	return FEE_OK;
 }
 
@@ -579,7 +583,7 @@ int LoadTable(char *relName, char *fileName)
 
 	while ((ret = read(fd, buff, rel_desc.relwid)) != 0) {
 		recid = HF_InsertRec(fd_rel, buff);
-		for (i = 0; i < i_cnt; i) {
+		for (i = 0; i < i_cnt; i++) {
 			AM_InsertEntry(index_fds[i], buff + 
 					index_attr_list[i]->offset, recid);
 		}
@@ -1160,6 +1164,8 @@ int PrintTable(char *relName)
 	char *data_buff;
 	int count = 0;
 
+	int ret = 0;
+
 	if (attrcatFd == relcatFd == -1) {
 		printf("[PrintTable] database is not connected\n");
 		FEerrno = FEE_DATABASE_NONCONNECT;
@@ -1200,9 +1206,9 @@ int PrintTable(char *relName)
 	} else if (!strcmp(relName, ATTRCATNAME)) {
 		fd_rel = attrcatFd;
 	} else {
-		fd_rel = HF_OpenFile(relName);	
+		fd_rel = HF_OpenFile(relName);
 	}
-	
+
 	if (fd_rel < 0) {
 		printf("[Printable] failed to open the relation named relName\n");
 		FEerrno = FEE_HF;
@@ -1215,7 +1221,7 @@ int PrintTable(char *relName)
 	     HF_ValidRecId(fd_rel, next_recid);
 	     next_recid = HF_GetNextRec(fd_rel, next_recid, data_buff)) {
 
-		if (!HF_ValidRecId(attrcatFd, next_recid)) {
+		if (!HF_ValidRecId(fd_rel, next_recid)) {
 			printf("[PrintTable]: No first record in target relation\n");
 			FEerrno = FEE_HF;
 			return FEE_HF;
@@ -1271,8 +1277,9 @@ int PrintTable(char *relName)
 		HF_CloseFile(fd_rel);
 	} 
 
-	free(attr_list);
 	free(data_buff);
+F_EXIT:
+	free(attr_list);
 
 	return 0;
 }

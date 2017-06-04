@@ -297,6 +297,7 @@ int BF_GetBuf(BFreq bq, PFpage **fpage)
 	int page_num = bq.pagenum;
 	struct BFpage *page;
 	struct BFhash_entry *hash_elem;
+	int ret = 0;
 
 	/* Checking whether requested page is already in buffer */
 	hash_elem = hashing(fd, page_num, NULL);
@@ -320,7 +321,7 @@ int BF_GetBuf(BFreq bq, PFpage **fpage)
 
 		page = free_page;
 		/* 2. Read data from file and Store into buffered page */
-		if ((pread(unix_fd, page->fpage.pagebuf, 
+		if ((ret = pread(unix_fd, page->fpage.pagebuf, 
 			   PAGE_SIZE, PAGE_SIZE * page_num)) != PAGE_SIZE) 
 			return BFE_UNIX;
 	
