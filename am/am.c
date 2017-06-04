@@ -44,7 +44,7 @@ void printTree(int fileDesc) {
 		printf("Leaf Number:%d\toffset:%d\tNumber of childrens:%d\n", loop, offset, leaf.nr_childrens);
 
 		for (loop2 = 0; loop2 < leaf.nr_childrens; loop2++) {	
-		  printf("Value:%s\tRECID.pagenum:%d\tDeleted:%d\n", leaf.children[loop2].value, leaf.children[loop2].recId.pagenum, leaf.children[loop2].deleted);
+		  printf("Value:%s\tRECID.recnum:%d\tDeleted:%d\n", leaf.children[loop2].value, leaf.children[loop2].recId.recnum, leaf.children[loop2].deleted);
 		}
 
 
@@ -138,7 +138,7 @@ bool_t AM_GetNextEntry(struct _AMHeader *header, att_val_t value, int op, int di
 		if ((*entry_offset == leaf.nr_childrens - 1) || (*entry_offset == -1)) {
 			*leaf_offset = leaf.next;
 
-			/* end of first leaf
+			/* end of last leaf
 			 * terminate search */
 			if (*leaf_offset == 0) {
 				return FALSE;
@@ -185,7 +185,6 @@ bool_t AM_GetFirstEntry(struct _AMHeader *header, att_val_t value, int op, offse
 		}
 	}
 
-	printf("finding %s... find?:%d leaf offset:%d, entry offset:%d\n", value, find, *leaf_offset, *entry_offset);
 
 	if (find) {
 		memcpy(find_record, &(leaf.children[*entry_offset]), sizeof(record_t));
@@ -677,7 +676,6 @@ offset_t AM_MarkUsedPage(struct _AMHeader *header) {
 	char *buf;
 
 	PF_AllocPage(header->pf_fd, &free_page_offset, &buf);
-	printf("allocpage called pf_fd:%d, before pageOffset:%d return pageOffset:%d\n", header->pf_fd, header->free_page_offset, free_page_offset);
 
 	PF_UnpinPage(header->pf_fd, free_page_offset, 0);
 
@@ -779,7 +777,6 @@ int AM_CreateIndex(char *fileName, int indexNo, char attrType,
 		return AME_PF_OPEN;
 	}
 
-	printf("openfile passed pf_fd:%d\n", pf_fd);
 	/* Allocate the new page for store header information of HF layer */
 	if (PF_AllocPage(pf_fd, &alloc_page_offset, &buf) != PFE_OK) {
 		printf("AM_CreateIndex: Failed to allocate new page for header\n");
@@ -863,7 +860,7 @@ int AM_OpenIndex(char *fileName, int indexNo)
 	int fileDesc = -1;
 	int i = 0;
 	struct _am_index_entry *alloc_entry = NULL;
-	
+	struct _AMHeader header;
 	char indexFileName[MAX_VAL_LENGTH];
 
 	sprintf(indexFileName, "%s%d", fileName, indexNo);
@@ -871,6 +868,12 @@ int AM_OpenIndex(char *fileName, int indexNo)
 	if ((pf_fd = PF_OpenFile(indexFileName)) < 0) {
 		printf("AM_OpenIndex: PF_OpenFile return error\n");
 		return AME_PF_OPEN;
+	}
+	AM_Map(&header, sizeof(header), pf_fd, AM_HEADER_PAGE_OFFSET);
+
+	if (pf_fd != header.pf_fd) {
+		header.pf_fd = pf_fd;
+		AM_Unmap(&header, sizeof(header), pf_fd, AM_HEADER_PAGE_OFFSET);
 	}
 
 	/* Allocate free entry in table and check already opened */
@@ -1024,8 +1027,8 @@ RECID AM_FindNextEntry(int scanDesc)
 
 	record_t find_record;
 	RECID invalid_recId;
-	invalid_recId.pagenum = -1;
-	invalid_recId.recnum = -1;
+	invalid_recId.pagenum = 999999;
+	invalid_recId.recnum = 999999;
 
 	if (scan_entry->valid == 0) {
 		printf("AM_FindNextEntry: Wrong scanDesc value\n");

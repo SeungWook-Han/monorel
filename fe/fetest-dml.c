@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
   delete_professor();
   show_table(STUDREL);
   show_table(PROFREL);
-
+  show_catalogs();
 
   printf(">>> Indexing / Joining students and professors ...\n");
   index_student();
@@ -422,7 +422,8 @@ int main(int argc, char *argv[])
   join_student_prof("stud_prof");
   show_table("stud_prof");
   show_catalogs();
-/*
+
+  /*
   printf(">>> Un-Indexing ...\n");
   unindex_student();
   unindex_professor();

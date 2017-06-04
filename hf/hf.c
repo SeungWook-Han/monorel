@@ -589,7 +589,6 @@ RECID HF_FindNextRec(int scanDesc, char *record)
 	}
 
 	if (HFerrno == HFE_EOF) {
-		printf("HF_FindNextRec: End of file\n");
 		HFerrno = HFE_EOF;
 		rec_id.recnum = hf_table[scan_entry->hf_fd].header.nr_rec;
 		return rec_id;
@@ -606,7 +605,6 @@ RECID HF_FindNextRec(int scanDesc, char *record)
 	}
 	
 	if (HFerrno == HFE_EOF) {
-		printf("HF_FindNextRec: End of file\n");
 		HFerrno = HFE_EOF;
 		rec_id.recnum = hf_table[scan_entry->hf_fd].header.nr_rec;
 		return rec_id;

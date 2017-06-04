@@ -951,7 +951,6 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 	int numProjAttrs, REL_ATTR projAttrs[], char *resRelName)
 {
 	/*Open two input files and one output file */
-	int is_tmp = 0;
 	int fd_input1 = 0, fd_input2 = 0, fd_output = 0;
 	int sd_input1 = 0, sd_input2 = 0;
 	char *in_buff1, *in_buff2, *out_buff;
@@ -967,13 +966,7 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 	/* For Test */
 	int count = 0;
 	/* */
-
-	if (resRelName == NULL) {
-		resRelName = malloc(MAXNAME);
-		sprintf(resRelName, "%s", JOIN_TMP_FILE_MARK);
-		is_tmp = 1;
-	}
-
+	
 	Search_RelCatalog(joinAttr1->relName, &rel_desc1, NULL);
 	Search_RelCatalog(joinAttr2->relName, &rel_desc2, NULL);
 
@@ -1016,10 +1009,10 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 		return FEE_JOIN_ATTR_NAME;
 	}
 
-	if (!isFileExist(resRelName)) {
-		CreateTable(resRelName, nr_attr_create, attr_create, NULL);
+	if (!isFileExist(JOIN_TMP_FILE_MARK)) {
+		CreateTable(JOIN_TMP_FILE_MARK, nr_attr_create, attr_create, NULL);
 	}
-	fd_output = HF_OpenFile(resRelName);
+	fd_output = HF_OpenFile(JOIN_TMP_FILE_MARK);
 
 	/* Doing join */
 	sd_input1 = HF_OpenFileScan(fd_input1, 0, 0, 0, 0, NULL);
@@ -1066,7 +1059,7 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 		memcpy(projAttrs_ch[i], projAttrs[i].attrName, MAXNAME);
 	}
 
-	Select(resRelName, NULL, 0, 0, 0, NULL, numProjAttrs, projAttrs_ch, NULL);
+	Select(JOIN_TMP_FILE_MARK, NULL, 0, 0, 0, NULL, numProjAttrs, projAttrs_ch, resRelName);
 
 	/* Mem Free */
 	for (i = 0; i < nr_attr_create; i++) {
@@ -1080,11 +1073,7 @@ int Join(REL_ATTR *joinAttr1, int op, REL_ATTR *joinAttr2,
 	free(attr_list2);
 	free(attr_create);
 
-	if (is_tmp == 1) {
-		/* PrintTable(resRelName); */
-		DestroyTable(resRelName);
-		free(resRelName);
-	}
+	DestroyTable(JOIN_TMP_FILE_MARK);
 
 	for (i = 0; i < numProjAttrs; i++) {
 		free(projAttrs_ch[i]);

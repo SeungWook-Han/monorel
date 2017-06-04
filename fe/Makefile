@@ -17,17 +17,17 @@ CFLAGS	= -g -ansi -pedantic
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 #####ORIGINAL#######
-#all: lib${LIB}.a ${LIB}test-ddl ${LIB}test-dml
+all: lib${LIB}.a ${LIB}test-ddl ${LIB}test-dml
 
-#${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
-#	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
+${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
+	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
-#${LIB}test-dml: ${LIB}test-dml.o lib${LIB}.a
-#	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
+${LIB}test-dml: ${LIB}test-dml.o lib${LIB}.a
+	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
-#lib${LIB}.a: $(OBJS)
-#	ar cr lib${LIB}.a $(OBJS)
-#	ranlib lib${LIB}.a
+lib${LIB}.a: $(OBJS)
+	ar cr lib${LIB}.a $(OBJS)
+	ranlib lib${LIB}.a
 
 ############################################################################
 
@@ -52,24 +52,24 @@ CFLAGS	= -g -ansi -pedantic
 #	ranlib lib${LIB}.a
 
 #### TEST DML ####
-all: lib${LIB}.a ${LIB}test-dml
+#all: lib${LIB}.a ${LIB}test-dml
 
-dml: lib${LIB}.a ${LIB}test-dml
-ddl: lib${LIB}.a ${LIB}test-ddl
+#dml: lib${LIB}.a ${LIB}test-dml
+#ddl: lib${LIB}.a ${LIB}test-ddl
 
-${LIB}test-dml: ${LIB}test-dml.o lib${LIB}.a
-	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
+#${LIB}test-dml: ${LIB}test-dml.o lib${LIB}.a
+#	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
-${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
-	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
+#${LIB}test-ddl: ${LIB}test-ddl.o lib${LIB}.a
+#	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
-lib${LIB}.a: $(OBJS)
-	ar cr lib${LIB}.a $(OBJS)
-	ranlib lib${LIB}.a
+#lib${LIB}.a: $(OBJS)
+#	ar cr lib${LIB}.a $(OBJS)
+#	ranlib lib${LIB}.a
 
 $(OBJS): ${INCS}
 
 clean:
-	rm -f lib${LIB}.a *.o ${LIB}test *.bak *~
+	rm -f lib${LIB}.a *.o ${LIB}test-ddl ${LIB}test-dml *.bak *~
 
 .c.o:; $(CC) $(CFLAGS) -c $< -I. -I$(INCDIR)
