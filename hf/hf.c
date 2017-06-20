@@ -64,10 +64,11 @@ int HF_CreateFile(char *fileName, int recSize)
 	int alloc_page_num = -1;
 	char *buf;
 	struct _HFHeader header;
+	int ret = 0;
 
 	/* If the file is already exist then the PF_CreateFile will return error */
 	/* PF Header will be stored into the created file */
-	if (PF_CreateFile(fileName) != PFE_OK) {
+	if ((ret = PF_CreateFile(fileName)) != PFE_OK) {
 		printf("HF_CreateFile: PF_CreateFile return error\n");
 		return HFE_PF_CREATE;
 	}
@@ -78,7 +79,7 @@ int HF_CreateFile(char *fileName, int recSize)
 	}
 
 	/* Allocate the new page for store header information of HF layer */
-	if (PF_AllocPage(pf_fd, &alloc_page_num, &buf) != PFE_OK) {
+	if ((ret = PF_AllocPage(pf_fd, &alloc_page_num, &buf)) != PFE_OK) {
 		printf("HF_CreateFile: Failed to allocate new page for header\n");
 		return HFE_ALLOC_PAGE;
 	}

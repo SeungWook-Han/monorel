@@ -23,8 +23,9 @@ bool_t PF_SearchTable(char *filename, int *ret_index)
 {
 	int i = 0;
 	for (i = 0; i < PF_FTAB_SIZE; i++) {
-		if(pf_table[i].unixfd != 0 && 
-		   !strncmp(filename, pf_table[i].fname, strlen(filename))) {
+		if (pf_table[i].unixfd != 0 && 
+		    pf_table[i].valid == TRUE && 
+		    !strncmp(filename, pf_table[i].fname, strlen(filename))) {
 			*ret_index = i;
 			return TRUE;
 		}
@@ -81,7 +82,13 @@ int PF_CreateFile(char *filename)
 	for (i = 0; i < PF_FTAB_SIZE; i++) {
 		if (pf_table[i].valid == FALSE) {
 			elem = &pf_table[i];
+			break;
 		}
+	}
+
+	if (i == PF_FTAB_SIZE) {
+		printf("PF_CreateFile: PF Table is full...\n");
+		return PFE_FILEOPEN;
 	}
 
 	elem->valid = FALSE;
@@ -91,17 +98,9 @@ int PF_CreateFile(char *filename)
 	elem->hdr.numpages = 0;
 	elem->hdr.offset = 0;
 
-/*
-	if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
-		return PFE_FILEIO;
-	}
-	if (pwrite(fd, page.pagebuf, sizeof(int), META_PAGE_OFFSET) != PAGE_SIZE) {
-		return PFE_FILEIO;
-	}
-*/
-	
 	if (pwrite(elem->unixfd, &(elem->hdr.numpages), 
 				sizeof(int), 0) != sizeof(int)) {
+		printf("PF_CreateFile: pwrite failed...\n");
 		return PFE_FILEIO;
 	}
 
@@ -122,7 +121,7 @@ int PF_DestroyFile(char *filename)
 /* Should we allow multiple open? 
  * On this implementation, we allow multiple open (we don't have any multiple open check here.)
  * If the opened file is tried to be opened again, the table entry wiil be initialized.
- * */
+ */
 int  PF_OpenFile(char *filename)
 {
 	int index = INVALID_INDEX;
@@ -145,20 +144,19 @@ int  PF_OpenFile(char *filename)
 				break;
 			}
 		}
-		if (index == INVALID_INDEX) 
+		if (index == INVALID_INDEX) { 
+			printf("[PF_OpenFile] PF Table is full\n");
 			return PFE_FTABFULL;
+		}
 
 		elem = &(pf_table[index]);
 		
 		if ((pread(fd, &elem->hdr.numpages, 
 			   sizeof(int), META_PAGE_OFFSET)) != sizeof(int)) 
 			return PFE_FILEIO;
-/*	
-		if(!sscanf((char*)&page, "%u", &elem->hdr.numpages)) 
-			return PFE_FILEIO;
-*/		
 	} else {
-		elem = &(pf_table[index]);
+		printf("[PF_OpenFile] Can not open the no-closed file\n");
+		return PFE_FTABFULL;
 	}
 
 	elem->valid = TRUE;
@@ -194,23 +192,11 @@ int  PF_CloseFile(int fd)
 	}
 	
 	if (elem->hdrchanged == TRUE) {
-	/*
-		struct PFpage page;
-
-		if (!sprintf(page.pagebuf, "%u", elem->hdr.numpages)) {
-			return PFE_FILEIO;
-		}
-
-		if (pwrite(elem->unixfd, page.pagebuf, sizeof(int), 0) != PAGE_SIZE) {
-			return PFE_FILEIO;
-		}
-	*/
 		if (pwrite(elem->unixfd, &(elem->hdr.numpages), 
 					sizeof(int), 0) != sizeof(int)) {
 			printf("PF_CloseFile: file io error\n");
 			return PFE_FILEIO;
 		}
-
 	}
 	
 	elem->valid = FALSE;
